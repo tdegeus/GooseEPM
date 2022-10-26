@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+    - main
+
+jobs:
+
+  standard:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+        - runs-on: ubuntu-latest
+          config: -DCMAKE_BUILD_TYPE=Release -DBUILD_ALL=1
+        - runs-on: macos-latest
+          config: -DCMAKE_BUILD_TYPE=Release -DBUILD_ALL=1
+        - runs-on: windows-latest
+          config: -DCMAKE_BUILD_TYPE=Release -DBUILD_ALL=1 -G Ninja
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    name: ${{ matrix.runs-on }} • x64 ${{ matrix.args }}
+    runs-on: ${{ matrix.runs-on }}
+
+    steps:
+
+    - name: Basic GitHub action setup
+      uses: actions/checkout@v2
+
+    - name: Set conda environment
+      uses: mamba-org/provision-with-micromamba@main
+      with:
+        environment-file: environment.yaml
+        environment-name: myenv
+        cache-env: true
+
+    - name: Set dummy version
+      run: echo "SETUPTOOLS_SCM_PRETEND_VERSION=0.0" >> $GITHUB_ENV
+
+    - name: Configure using CMake
+      run: cmake -Bbuild ${{ matrix.config }}
+
+    - name: Build doxygen-docs
+      if: runner.os == 'Linux'
+      working-directory: build
+      run: |
+        make html
+        cat doxygen_warnings.log
+
+    - name: Require minimal documentation
+      if: runner.os == 'Linux'
+      working-directory: build
+      run: if grep -q "not documented" doxygen_warnings.log ; then exit 1; fi
+
+    - name: Build C++
+      working-directory: build
+      run: cmake --build .
+
+    - name: Build and install Python module
+      run: python -m pip install . -v
+
+    - name: Run Python tests
+      run: python -m unittest discover tests

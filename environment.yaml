@@ -1,0 +1,15 @@
+channels:
+- conda-forge
+dependencies:
+- cmake
+- doxygen >=1.9.5
+- mathjax
+- ninja
+- numpy
+- pybind11
+- python
+- scikit-build
+- setuptools_scm
+- xsimd
+- xtensor
+- xtensor-python
