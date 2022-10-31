@@ -51,5 +51,4 @@ PYBIND11_MODULE(_GooseEPM, mod)
     namespace M = GooseEPM;
 
     mod.def("version", &M::version, "Return version string.");
-
 }

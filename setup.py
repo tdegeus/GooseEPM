@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from setuptools import find_packages
 from setuptools_scm import get_version
 from skbuild import setup
 
@@ -18,7 +17,7 @@ setup(
     author="Tom de Geus",
     author_email="tom@geus.me",
     url=f"https://github.com/tdegeus/{project_name}",
-    packages=find_packages(exclude=["tests"]),
+    packages=[f"{project_name}"],
     package_dir={"": "python"},
     cmake_install_dir=f"python/{project_name}",
     cmake_minimum_required_version="3.13...3.21",

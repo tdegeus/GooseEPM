@@ -6,6 +6,7 @@ dependencies:
 - mathjax
 - ninja
 - numpy
+- prrng
 - pybind11
 - python
 - scikit-build
