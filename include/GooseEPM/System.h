@@ -1,5 +1,5 @@
 /**
- * @file version.h
+ * @file
  * @copyright Copyright 2022. Tom de Geus. All rights reserved.
  * @license This project is released under the MIT License.
  */
@@ -136,6 +136,24 @@ public:
             m_sigy.flat(i) =
                 m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
         }
+    }
+
+    /**
+     * @brief Set the time
+     * @param t Time.
+     */
+    void set_t(double t)
+    {
+        m_t = t;
+    }
+
+    /**
+     * @brief Get the time
+     * @return Time.
+     */
+    uint64_t t() const
+    {
+        return m_t;
     }
 
     /**
@@ -404,22 +422,20 @@ public:
     }
 
 protected:
-    prrng::pcg32 m_gen;
-    array_type::tensor<double, 2> m_propagator;
-    array_type::tensor<ptrdiff_t, 1> m_dx;
-    array_type::tensor<ptrdiff_t, 1> m_dy;
-    array_type::tensor<double, 2> m_sig;
-    array_type::tensor<double, 2> m_sigy;
-    array_type::tensor<double, 2> m_sigy_mu;
-    array_type::tensor<double, 2> m_sigy_std;
-    array_type::tensor<double, 2> m_epsp;
-    double m_t;
-    double m_failure_rate;
-    double m_alpha;
-    bool m_fixed_stress;
-    double m_sigbar;
-    size_t m_imid;
-    size_t m_jmid;
+    prrng::pcg32 m_gen; ///< Random number generator.
+    array_type::tensor<double, 2> m_propagator; ///< Propagator.
+    array_type::tensor<ptrdiff_t, 1> m_dx; ///< Lookup list: distance -> row in #m_propagator.
+    array_type::tensor<ptrdiff_t, 1> m_dy; ///< Lookup list: distance -> column in #m_propagator.
+    array_type::tensor<double, 2> m_sig; ///< Stress.
+    array_type::tensor<double, 2> m_sigy; ///< Yield stress.
+    array_type::tensor<double, 2> m_sigy_mu; ///< Mean yield stress.
+    array_type::tensor<double, 2> m_sigy_std; ///< Standard deviation of yield stress.
+    array_type::tensor<double, 2> m_epsp; ///< Plastic strain.
+    double m_t; ///< Time.
+    double m_failure_rate; ///< Failure rate.
+    double m_alpha; ///< Exponent characterising the shape of the potential.
+    bool m_fixed_stress; ///< Flag indicating whether the stress is fixed.
+    double m_sigbar; ///< Average stress.
 };
 
 } // namespace GooseEPM

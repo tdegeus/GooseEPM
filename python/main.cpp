@@ -1,7 +1,7 @@
 /**
  * @file
- * @copyright Copyright 2020. Tom de Geus. All rights reserved.
- * @license This project is released under the GNU Public License (MIT).
+ * @copyright Copyright 2022. Tom de Geus. All rights reserved.
+ * @license This project is released under the MIT License.
  */
 
 #include <pybind11/pybind11.h>
@@ -79,6 +79,8 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("failure_rate"),
             py::arg("sigmabar"),
             py::arg("fixed_stress"));
+
+        cls.def_property("t", &M::SystemAthermal::t, &M::SystemAthermal::set_t, "Current time");
 
         cls.def_property(
             "state",
