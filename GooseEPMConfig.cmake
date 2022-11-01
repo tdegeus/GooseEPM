@@ -29,12 +29,6 @@ endif()
 
 find_dependency(xtensor)
 
-find_package(Eigen3)
-
-if (TARGET Eigen3::Eigen)
-    target_link_libraries(GooseEPM INTERFACE Eigen3::Eigen)
-endif()
-
 # Define support target "GooseEPM::compiler_warnings"
 
 if(NOT TARGET GooseEPM::compiler_warnings)
@@ -79,5 +73,5 @@ if(NOT TARGET GooseEPM::debug)
     set_property(
         TARGET GooseEPM::debug
         PROPERTY INTERFACE_COMPILE_DEFINITIONS
-        XTENSOR_ENABLE_ASSERT GOOSEEPM_ENABLE_ASSERT)
+        XTENSOR_ENABLE_ASSERT PRRNG_ENABLE_ASSERT GOOSEEPM_ENABLE_ASSERT)
 endif()

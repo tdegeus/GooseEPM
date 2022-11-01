@@ -41,6 +41,7 @@
 #include <xtensor/xlayout.hpp>
 #include <xtensor/xmath.hpp>
 #include <xtensor/xnoalias.hpp>
+#include <xtensor/xset_operation.hpp>
 #include <xtensor/xshape.hpp>
 #include <xtensor/xsort.hpp>
 #include <xtensor/xstrided_view.hpp>
@@ -62,9 +63,9 @@ using namespace xt::placeholders;
     std::cout << std::string(file) + ":" + std::to_string(line) + " (" + std::string(function) + \
                      ")" + ": " message ") \n\t";
 
-#define GOOSEEPM_ASSERT_IMPL(expr, file, line, function) \
+#define GOOSEEPM_ASSERT_IMPL(expr, assertion, file, line, function) \
     if (!(expr)) { \
-        throw std::runtime_error( \
+        throw assertion( \
             std::string(file) + ":" + std::to_string(line) + " (" + std::string(function) + ")" + \
             ": assertion failed (" #expr ") \n\t"); \
     }
@@ -91,9 +92,10 @@ using namespace xt::placeholders;
  * \throw std::runtime_error
  */
 #ifdef GOOSEEPM_ENABLE_ASSERT
-#define GOOSEEPM_ASSERT(expr) GOOSEEPM_ASSERT_IMPL(expr, __FILE__, __LINE__, __FUNCTION__)
+#define GOOSEEPM_ASSERT(expr, assertion) \
+    GOOSEEPM_ASSERT_IMPL(expr, assertion, __FILE__, __LINE__, __FUNCTION__)
 #else
-#define GOOSEEPM_ASSERT(expr)
+#define GOOSEEPM_ASSERT(expr, assertion)
 #endif
 
 /**
@@ -103,7 +105,8 @@ using namespace xt::placeholders;
  *
  * \throw std::runtime_error
  */
-#define GOOSEEPM_REQUIRE(expr) GOOSEEPM_ASSERT_IMPL(expr, __FILE__, __LINE__, __FUNCTION__)
+#define GOOSEEPM_REQUIRE(expr, assertion) \
+    GOOSEEPM_ASSERT_IMPL(expr, assertion, __FILE__, __LINE__, __FUNCTION__)
 
 /**
  * Assertion that concerns temporary implementation limitations.
@@ -113,7 +116,8 @@ using namespace xt::placeholders;
  *
  * \throw std::runtime_error
  */
-#define GOOSEEPM_WIP_ASSERT(expr) GOOSEEPM_ASSERT_IMPL(expr, __FILE__, __LINE__, __FUNCTION__)
+#define GOOSEEPM_WIP_ASSERT(expr, assertion) \
+    GOOSEEPM_ASSERT_IMPL(expr, assertion, __FILE__, __LINE__, __FUNCTION__)
 
 /**
  * All warnings are implemented as::
