@@ -112,9 +112,100 @@ public:
         m_sigbar = 0;
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
-            m_sigy.flat(i) = m_gen.normal(
-                std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
+            m_sigy.flat(i) =
+                m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
         }
+    }
+
+    /**
+     * @brief Set the state of the random number generator.
+     * @param state State.
+     */
+    void set_state(uint64_t state)
+    {
+        m_gen.restore(state);
+    }
+
+    /**
+     * @brief Get the state of the random number generator.
+     * @return State.
+     */
+    uint64_t state() const
+    {
+        return m_gen.state();
+    }
+
+    /**
+     * @brief Set the plastic strain.
+     * @param epsp Plastic strain.
+     */
+    void set_epsp(const array_type::tensor<double, 2>& epsp)
+    {
+        m_epsp = epsp;
+    }
+
+    /**
+     * @brief Get the plastic strain.
+     * @return Plastic strain.
+     */
+    const array_type::tensor<double, 2>& epsp() const
+    {
+        return m_epsp;
+    }
+
+    /**
+     * @brief Set the yield stress.
+     * @param sigmay Yield stress.
+     */
+    void set_sigmay(const array_type::tensor<double, 2>& sigmay)
+    {
+        m_sigy = sigmay;
+    }
+
+    /**
+     * @brief Get the yield stress.
+     * @return Yield stress.
+     */
+    const array_type::tensor<double, 2>& sigmay() const
+    {
+        return m_sigy;
+    }
+
+    /**
+     * @brief Set the stress.
+     * @param sigma Stress.
+     */
+    void set_sigma(const array_type::tensor<double, 2>& sigma)
+    {
+        m_sig = sigma;
+    }
+
+    /**
+     * @brief Get the stress.
+     * @return Stress.
+     */
+    const array_type::tensor<double, 2>& sigma() const
+    {
+        return m_sig;
+    }
+
+    /**
+     * @brief Set the imposed stress.
+     * @param sigmabar Imposed stress.
+     */
+    void set_sigmabar(double sigmabar)
+    {
+        m_sigbar = sigmabar;
+        m_sig -= xt::mean(m_sig)() - m_sigbar;
+    }
+
+    /**
+     * @brief Get the average (imposed) stress.
+     * @return Average stress.
+     */
+    double sigmabar() const
+    {
+        return m_sigbar;
     }
 
     /**
@@ -167,45 +258,14 @@ public:
                             m_sig(k, l) += dsig;
                         }
                         else {
-                            m_sig(k, l) += m_propagator(m_dx.periodic(i - k), m_dy.periodic(j - l)) * dsig;
+                            m_sig(k, l) +=
+                                m_propagator(m_dx.periodic(i - k), m_dy.periodic(j - l)) * dsig;
                         }
                     }
                 }
             }
         }
     }
-
-    /**
-     * @brief Set the imposed stress.
-     * @param sigmabar Imposed stress.
-     */
-    void set_sigmabar(double sigmabar)
-    {
-        m_sigbar = sigmabar;
-        m_sig -= xt::mean(m_sig)() - m_sigbar;
-    }
-
-    /**
-     * @brief Get the average (imposed) stress.
-     * @return Average stress.
-     */
-    double sigmabar() const
-    {
-        return m_sigbar;
-    }
-
-    // /**
-    //  * @brief Restore state.
-    //  * @param
-    //  * @param state State of the general purpose random number generator.
-    //  */
-    // template <class T>
-    // void restore(const T& sigmay_state, uint64_t state)
-    // {
-    //     GOOSEEPM_REQUIRE(xt::has_shape(sigmay_state, m_sigy_gen.shape()), std::out_of_range);
-    //     m_sigy_gen.restore(sigmay_state);
-    //     m_gen.restore(state);
-    // }
 
     /**
      * @brief Make `n` makeFailureStep() calls.
@@ -267,8 +327,8 @@ public:
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
-        m_sigy.flat(idx) = m_gen.normal(
-            std::array<size_t, 0>{}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))();
+        m_sigy.flat(idx) =
+            m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))();
 
         auto index = xt::unravel_index(idx, m_sig.shape());
         ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);

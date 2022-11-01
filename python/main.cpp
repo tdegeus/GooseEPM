@@ -80,15 +80,54 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("sigmabar"),
             py::arg("fixed_stress"));
 
-        cls.def_property("sigmabar", &M::SystemAthermal::sigmabar, &M::SystemAthermal::set_sigmabar, "Average (prescribed) stress");
+        cls.def_property(
+            "state",
+            &M::SystemAthermal::state,
+            &M::SystemAthermal::set_state,
+            "State of the random number generator");
 
-        cls.def("makeFailureSteps", &M::SystemAthermal::makeFailureSteps, "Make `n` failure steps", py::arg("n"));
+        cls.def_property(
+            "epsp", &M::SystemAthermal::epsp, &M::SystemAthermal::set_epsp, "Plastic strain");
 
-        cls.def("makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+        cls.def_property(
+            "sigmay", &M::SystemAthermal::sigmay, &M::SystemAthermal::set_sigmay, "Yield stress");
 
-        cls.def("makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+        cls.def_property(
+            "sigma", &M::SystemAthermal::sigma, &M::SystemAthermal::set_sigma, "Stress");
 
-        cls.def("shiftImposedShear", &M::SystemAthermal::shiftImposedShear, "Increment imposed shear");
+        cls.def_property(
+            "sigmabar",
+            &M::SystemAthermal::sigmabar,
+            &M::SystemAthermal::set_sigmabar,
+            "Average (prescribed) stress");
+
+        cls.def(
+            "initSigmaFast",
+            &M::SystemAthermal::initSigmaFast,
+            "Randomise stress field",
+            py::arg("sigma_std"),
+            py::arg("delta_t"));
+
+        cls.def(
+            "initSigmaPropogator",
+            &M::SystemAthermal::initSigmaPropogator,
+            "Randomise stress field",
+            py::arg("sigma_std"));
+
+        cls.def(
+            "makeFailureSteps",
+            &M::SystemAthermal::makeFailureSteps,
+            "Make `n` failure steps",
+            py::arg("n"));
+
+        cls.def(
+            "makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+
+        cls.def(
+            "makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+
+        cls.def(
+            "shiftImposedShear", &M::SystemAthermal::shiftImposedShear, "Increment imposed shear");
 
         cls.def("__repr__", [](const M::SystemAthermal&) { return "<GooseEPM.SystemAthermal>"; });
     }
