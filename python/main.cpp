@@ -75,10 +75,10 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("sigmay_mean"),
             py::arg("sigmay_std"),
             py::arg("seed"),
-            py::arg("alpha"),
-            py::arg("failure_rate"),
-            py::arg("sigmabar"),
-            py::arg("fixed_stress"));
+            py::arg("failure_rate") = 1,
+            py::arg("alpha") = 1.5,
+            py::arg("sigmabar") = 0,
+            py::arg("fixed_stress") = false);
 
         cls.def_property("t", &M::SystemAthermal::t, &M::SystemAthermal::set_t, "Current time");
 

@@ -106,10 +106,10 @@ public:
         const Y& sigmay_mean,
         const Z& sigmay_std,
         uint64_t seed,
-        double failure_rate,
-        double alpha,
-        double sigmabar,
-        bool fixed_stress)
+        double failure_rate = 1,
+        double alpha = 1.5,
+        double sigmabar = 0,
+        bool fixed_stress = false)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
         GOOSEEPM_REQUIRE(dx.size() == propagator.shape(0), std::out_of_range);
