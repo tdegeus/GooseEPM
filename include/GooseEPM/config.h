@@ -41,13 +41,13 @@
 #include <xtensor/xlayout.hpp>
 #include <xtensor/xmath.hpp>
 #include <xtensor/xnoalias.hpp>
+#include <xtensor/xset_operation.hpp>
 #include <xtensor/xshape.hpp>
 #include <xtensor/xsort.hpp>
 #include <xtensor/xstrided_view.hpp>
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xutils.hpp>
 #include <xtensor/xview.hpp>
-#include <xtensor/xset_operation.hpp>
 
 /**
  * \cond
