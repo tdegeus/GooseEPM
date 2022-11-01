@@ -80,4 +80,11 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         cls.def("__repr__", [](const M::SystemAthermal&) { return "<GooseEPM.SystemAthermal>"; });
     }
+
+    {
+        py::module submod = mod.def_submodule("detail", "detail");
+        namespace SM = GooseEPM::detail;
+
+        submod.def("create_distance_lookup", &SM::create_distance_lookup<xt::pytensor<ptrdiff_t, 1>>, "Create a distance lookup.", py::arg("distance"));
+    }
 }

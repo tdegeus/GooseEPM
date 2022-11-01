@@ -47,6 +47,7 @@
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xutils.hpp>
 #include <xtensor/xview.hpp>
+#include <xtensor/xset_operation.hpp>
 
 /**
  * \cond

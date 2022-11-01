@@ -15,6 +15,65 @@
 
 namespace GooseEPM {
 
+namespace detail {
+
+/**
+ * @brief Create a distance lookup as follows:
+ *
+ *      [0, 1, 2, ..., N - 2, N - 1, -N + 1, -N + 2, ... -3, -2, -1]
+ *
+ * with `N` the shape of the propagator along the considered axis (`== distance.size()`).
+ * For example for `N = 7` the input could be:
+ *
+ *      distance = [-3, -2, -1,  0,  1,  2,  3]
+ *
+ * The the lookup table (output) is:
+ *
+ *      // dist:    0   1   2   3   4   5   6  -6  -5  -4  -3  -2  -1
+ *      lookup = [  3,  4,  5,  6,  0,  1,  2,  4,  5,  6,  0,  1,  2]
+ *
+ * whereby periodicity is applied such that:
+ *
+ *      // dist:    0   1   2   3   4   5   6  -6  -5  -4  -3  -2  -1
+ *      // per:     0   1   2   3  -3  -2  -1   1   2   3  -3  -2  -1
+ *
+ * @param distance List with distances according to which an axis of the propagator is orders.
+ * @return Look-up list.
+ */
+template <class T>
+inline T create_distance_lookup(const T& distance)
+{
+    using value_type = typename T::value_type;
+    static_assert(std::numeric_limits<value_type>::is_integer, "Distances must be integer");
+    static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
+
+    value_type lower = xt::amin(distance)();
+    value_type upper = xt::amax(distance)() + 1;
+    auto d = xt::arange<value_type>(lower, upper);
+    GOOSEEPM_REQUIRE(xt::all(xt::in1d(distance, d)), std::invalid_argument);
+    GOOSEEPM_REQUIRE(distance.size() == upper - lower, std::invalid_argument);
+
+    value_type N = static_cast<value_type>(distance.size());
+    T ret = xt::empty<value_type>({2 * N - 1});
+
+    for (value_type i = 0; i < upper; ++i) {
+        ret(i) = xt::argmax(xt::equal(distance, i))();
+    }
+    for (value_type i = upper; i < N; ++i) {
+        ret(i) = xt::argmax(xt::equal(distance, i - N))();
+    }
+    for (value_type i = -1; i >= lower; --i) {
+        ret.periodic(i) = xt::argmax(xt::equal(distance, i))();
+    }
+    for (value_type i = lower; i > -N; --i) {
+        ret.periodic(i) = xt::argmax(xt::equal(distance, N + i))();
+    }
+
+    return ret;
+}
+
+} // namespace detail
+
 class SystemAthermal {
 
 public:
@@ -66,6 +125,63 @@ public:
         else {
             m_jmid = (m_propagator.shape(1) - 1) / 2;
         }
+    }
+
+    /**
+     * @brief Randomise the stress field changing the stress at `(i, j)` by a random value,
+     * while changing it by the same value (with a prefactor) at `(i +- delta_r, j +- delta_r)`.
+     *
+     * @param sigma_std Width of the normal distribution of stresses (mean == 0).
+     * @param delta_r Distance to use, see above.
+     */
+    void initSigmaTrick(double sigma_std, size_t delta_r)
+    {
+        ptrdiff_t d = static_cast<ptrdiff_t>(delta_r);
+
+        for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
+            for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
+                double dsig = m_gen.normal(std::array<size_t, 0>{}, 0, sigma_std)();
+                m_sig(i, j) += dsig;
+                m_sig.periodic(i - d, j) -= 0.5 * dsig;
+                m_sig.periodic(i + d, j) -= 0.5 * dsig;
+                m_sig.periodic(i, j - d) -= 0.5 * dsig;
+                m_sig.periodic(i, j + d) -= 0.5 * dsig;
+                m_sig.periodic(i + d, j + d) += 0.25 * dsig;
+                m_sig.periodic(i - d, j + d) += 0.25 * dsig;
+                m_sig.periodic(i + d, j - d) += 0.25 * dsig;
+                m_sig.periodic(i - d, j - d) += 0.25 * dsig;
+            }
+        }
+
+        m_sig *= 0.5;
+    }
+
+    /**
+     * @brief Randomise the stress field changing the stress at `(i, j)` by a random value,
+     * and changing is accordingly in the entire surrounding using the propagator.
+     *
+     * @param sigma_std Width of the normal distribution of stresses (mean == 0).
+     */
+    void initSigmaPropogator(double sigma_std)
+    {
+        m_sig.fill(0);
+
+        for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
+            for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
+
+                double dsig = m_gen.normal(std::array<size_t, 0>{}, 0, sigma_std)();
+
+                for (ptrdiff_t k = 0; k < m_sig.shape(0); ++k) {
+                    for (ptrdiff_t l = 0; l < m_sig.shape(1); ++l) {
+                        if (i == k && j == l) {
+                            m_sig(i, j) += dsig;
+                        }
+                        m_sig(i, j) += m_propagator.periodic(i - k, j - l) * dsig;
+                    }
+                }
+            }
+        }
+
     }
 
     /**
