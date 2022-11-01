@@ -77,19 +77,22 @@ inline T create_distance_lookup(const T& distance)
 class SystemAthermal {
 
 public:
-    template <class T, class S, class Y, class Z>
+    template <class T, class D, class Y, class Z>
     SystemAthermal(
         const T& propagator,
+        const D& dx,
+        const D& dy,
         const Y& sigmay_mean,
         const Z& sigmay_std,
-        const S& sigmay_initstate,
         uint64_t seed,
         double failure_rate,
         double alpha,
+        double sigmabar,
         bool fixed_stress)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
-        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_initstate, propagator.shape()), std::out_of_range);
+        GOOSEEPM_REQUIRE(dx.size() == propagator.shape(0), std::out_of_range);
+        GOOSEEPM_REQUIRE(dy.size() == propagator.shape(1), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, propagator.shape()), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_std, propagator.shape()), std::out_of_range);
 
@@ -98,32 +101,19 @@ public:
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
         m_propagator = propagator;
-        m_sigy_gen = prrng::pcg32_tensor<2>(sigmay_initstate);
+        m_dx = detail::create_distance_lookup(dx);
+        m_dy = detail::create_distance_lookup(dy);
         m_gen = prrng::pcg32(seed);
-        m_sig = xt::zeros<double>(sigmay_initstate.shape());
-        m_epsp = xt::zeros<double>(sigmay_initstate.shape());
-        m_sigy = xt::empty<double>(sigmay_initstate.shape());
+        m_sig = sigmabar * xt::ones<double>(propagator.shape());
+        m_epsp = xt::zeros<double>(propagator.shape());
+        m_sigy = xt::empty<double>(propagator.shape());
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
-        m_sigbar = xt::mean(m_sig)();
+        m_sigbar = 0;
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
-            m_sigy.flat(i) = m_sigy_gen.flat(i).normal(
+            m_sigy.flat(i) = m_gen.normal(
                 std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
-        }
-
-        if (m_propagator.shape(0) % 2 == 0) {
-            m_imid = m_propagator.shape(0) / 2;
-        }
-        else {
-            m_imid = (m_propagator.shape(0) - 1) / 2;
-        }
-
-        if (m_propagator.shape(1) % 2 == 0) {
-            m_jmid = m_propagator.shape(1) / 2;
-        }
-        else {
-            m_jmid = (m_propagator.shape(1) - 1) / 2;
         }
     }
 
@@ -134,7 +124,7 @@ public:
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      * @param delta_r Distance to use, see above.
      */
-    void initSigmaTrick(double sigma_std, size_t delta_r)
+    void initSigmaFast(double sigma_std, size_t delta_r)
     {
         ptrdiff_t d = static_cast<ptrdiff_t>(delta_r);
 
@@ -153,18 +143,18 @@ public:
             }
         }
 
-        m_sig *= 0.5;
+        m_sig *= 0.5; // todo: clearify why this is needed
     }
 
     /**
      * @brief Randomise the stress field changing the stress at `(i, j)` by a random value,
-     * and changing is accordingly in the entire surrounding using the propagator.
+     * and changing the entire surrounding based on that value using the propagator.
      *
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      */
     void initSigmaPropogator(double sigma_std)
     {
-        m_sig.fill(0);
+        m_sig.fill(0); // todo: I would think that this is a bug
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
@@ -174,9 +164,11 @@ public:
                 for (ptrdiff_t k = 0; k < m_sig.shape(0); ++k) {
                     for (ptrdiff_t l = 0; l < m_sig.shape(1); ++l) {
                         if (i == k && j == l) {
-                            m_sig(i, j) += dsig;
+                            m_sig(k, l) += dsig;
                         }
-                        m_sig(i, j) += m_propagator.periodic(i - k, j - l) * dsig;
+                        else {
+                            m_sig(k, l) += m_propagator(m_dx.periodic(i - k), m_dy.periodic(j - l)) * dsig;
+                        }
                     }
                 }
             }
@@ -184,19 +176,53 @@ public:
     }
 
     /**
-     * @brief Restore random number generators.
-     * @param sigmay_state State of the random number generator for the sigmay.
-     * @param state State of the general purpose random number generator.
+     * @brief Set the imposed stress.
+     * @param sigmabar Imposed stress.
      */
-    template <class T>
-    void restore(const T& sigmay_state, uint64_t state)
+    void set_sigmabar(double sigmabar)
     {
-        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_state, m_sigy_gen.shape()), std::out_of_range);
-        m_sigy_gen.restore(sigmay_state);
-        m_gen.restore(state);
+        m_sigbar = sigmabar;
+        m_sig -= xt::mean(m_sig)() - m_sigbar;
     }
 
-    size_t makeAthermalFailureStep()
+    /**
+     * @brief Get the average (imposed) stress.
+     * @return Average stress.
+     */
+    double sigmabar() const
+    {
+        return m_sigbar;
+    }
+
+    // /**
+    //  * @brief Restore state.
+    //  * @param
+    //  * @param state State of the general purpose random number generator.
+    //  */
+    // template <class T>
+    // void restore(const T& sigmay_state, uint64_t state)
+    // {
+    //     GOOSEEPM_REQUIRE(xt::has_shape(sigmay_state, m_sigy_gen.shape()), std::out_of_range);
+    //     m_sigy_gen.restore(sigmay_state);
+    //     m_gen.restore(state);
+    // }
+
+    /**
+     * @brief Make `n` makeFailureStep() calls.
+     * @param n Number of steps to make.
+     */
+    void makeFailureSteps(size_t n)
+    {
+        for (size_t i = 0; i < n; ++i) {
+            makeFailureStep();
+        }
+    }
+
+    /**
+     * @brief Failure step.
+     * @return Index of the failing particle (flat index).
+     */
+    size_t makeFailureStep()
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
@@ -207,6 +233,10 @@ public:
         return idx;
     }
 
+    /**
+     * @brief Fail weakest particle.
+     * @return Index of the failing particle (flat index).
+     */
     size_t makeWeakestFailureStep()
     {
         size_t idx = xt::argmin(m_sigy - m_sig)();
@@ -226,7 +256,7 @@ public:
     /**
      * @brief Fail a block.
      *
-     * -    Change the stress in the block and stabilise it.
+     * -    Change the stress in the block.
      * -    Apply the propagator to change the stress in all 'surrounding' blocks.
      *
      * @param idx Flat index of the block to fail.
@@ -237,21 +267,19 @@ public:
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
-        m_sigy.flat(idx) = m_sigy_gen.flat(idx).normal(
+        m_sigy.flat(idx) = m_gen.normal(
             std::array<size_t, 0>{}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))();
 
         auto index = xt::unravel_index(idx, m_sig.shape());
-        size_t i0 = index[0];
-        size_t j0 = index[1];
+        ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
+        ptrdiff_t j0 = static_cast<ptrdiff_t>(index[1]);
 
-        for (size_t i = 0; i < m_sig.shape(0); ++i) {
-            for (size_t j = 0; j < m_sig.shape(1); ++j) {
+        for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
+            for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
                 if (i == i0 && j == j0) {
                     continue;
                 }
-                size_t di = this->propagator_index(i0, i, m_imid);
-                size_t dj = this->propagator_index(j0, j, m_jmid);
-                m_sig(i, j) += m_propagator(di, dj) * dsig;
+                m_sig(i, j) += m_propagator(m_dx.periodic(i - i0), m_dx.periodic(j - j0)) * dsig;
             }
         }
 
@@ -262,33 +290,21 @@ public:
         m_sig -= xt::mean(m_sig)() - m_sigbar;
     }
 
-private:
-    size_t propagator_index(size_t i0, size_t i, size_t imid)
+    /**
+     * @brief Take imposed shear step according the the event-driving protocol.
+     */
+    void shiftImposedShear()
     {
-        if (i < i0) {
-            size_t d = i0 - i;
-            if (d > imid) {
-                return imid + (imid - d);
-            }
-            else {
-                return imid - d;
-            }
-        }
-        else {
-            size_t d = i - i0;
-            if (d > imid) {
-                return imid + (imid - d);
-            }
-            else {
-                return imid + d;
-            }
-        }
+        double dsig = xt::amin(m_sigy - m_sig)();
+        m_sig += dsig;
+        m_sigbar += dsig;
     }
 
 protected:
     prrng::pcg32 m_gen;
-    prrng::pcg32_tensor<2> m_sigy_gen;
     array_type::tensor<double, 2> m_propagator;
+    array_type::tensor<ptrdiff_t, 1> m_dx;
+    array_type::tensor<ptrdiff_t, 1> m_dy;
     array_type::tensor<double, 2> m_sig;
     array_type::tensor<double, 2> m_sigy;
     array_type::tensor<double, 2> m_sigy_mu;

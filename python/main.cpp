@@ -59,24 +59,36 @@ PYBIND11_MODULE(_GooseEPM, mod)
         cls.def(
             py::init<
                 const xt::pytensor<double, 2>&,
-                const xt::pytensor<double, 2>&,
+                const xt::pytensor<ptrdiff_t, 1>&,
+                const xt::pytensor<ptrdiff_t, 1>&,
                 const xt::pytensor<double, 2>&,
                 const xt::pytensor<double, 2>&,
                 uint64_t,
                 double,
                 double,
+                double,
                 bool>(),
             "System",
             py::arg("propagator"),
+            py::arg("dx"),
+            py::arg("dy"),
             py::arg("sigmay_mean"),
             py::arg("sigmay_std"),
-            py::arg("sigma_initstate"),
             py::arg("seed"),
             py::arg("alpha"),
             py::arg("failure_rate"),
+            py::arg("sigmabar"),
             py::arg("fixed_stress"));
 
-        // cls.def_property_readonly("N", &SM::System::N, "Number of particles");
+        cls.def_property("sigmabar", &M::SystemAthermal::sigmabar, &M::SystemAthermal::set_sigmabar, "Average (prescribed) stress");
+
+        cls.def("makeFailureSteps", &M::SystemAthermal::makeFailureSteps, "Make `n` failure steps", py::arg("n"));
+
+        cls.def("makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+
+        cls.def("makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+
+        cls.def("shiftImposedShear", &M::SystemAthermal::shiftImposedShear, "Increment imposed shear");
 
         cls.def("__repr__", [](const M::SystemAthermal&) { return "<GooseEPM.SystemAthermal>"; });
     }
