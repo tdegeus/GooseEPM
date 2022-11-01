@@ -129,6 +129,14 @@ PYBIND11_MODULE(_GooseEPM, mod)
         cls.def(
             "shiftImposedShear", &M::SystemAthermal::shiftImposedShear, "Increment imposed shear");
 
+        cls.def("eventDrivenStep", &M::SystemAthermal::eventDrivenStep, "Event-driven step");
+
+        cls.def(
+            "eventDrivenSteps",
+            &M::SystemAthermal::eventDrivenSteps,
+            "Event-driven steps",
+            py::arg("n"));
+
         cls.def("__repr__", [](const M::SystemAthermal&) { return "<GooseEPM.SystemAthermal>"; });
     }
 

@@ -74,9 +74,30 @@ inline T create_distance_lookup(const T& distance)
 
 } // namespace detail
 
+/**
+ * @brief Athermal system that can be driving in imposed stress or imposed strain, as follows.
+ *
+ *      -   Imposed strain: take (an) event driven step(s) using
+ *          eventDrivenStep() or eventDrivenSteps()
+ *
+ *      -   Imposed stress: take (a) failure step(s) using
+ *          failureStep() or failureSteps()
+ */
 class SystemAthermal {
 
 public:
+    /**
+     * @param propagator The propagator `[M, N]`.
+     * @param dx The distance that each row of the propagator corresponds to `[M]`.
+     * @param dy The distance that each column of the propagator corresponds to `[N]`.
+     * @param sigmay_mean Mean yield stress for every block `[M, N]`.
+     * @param sigmay_std Standard deviation of the yield stress for every block `[M, N]`.
+     * @param seed Seed of the random number generator.
+     * @param failure_rate Failure rate (irrelevant if event-driving protocol is used).
+     * @param alpha Exponent characterising the shape of the potential.
+     * @param sigmabar Mean stress to initialise the system.
+     * @param fixed_stress If `true` the stress is kept constant.
+     */
     template <class T, class D, class Y, class Z>
     SystemAthermal(
         const T& propagator,
@@ -173,11 +194,13 @@ public:
 
     /**
      * @brief Set the stress.
+     * If a fixed stress protocol is used the fixed stress is set to `mean(sigma)`.
      * @param sigma Stress.
      */
     void set_sigma(const array_type::tensor<double, 2>& sigma)
     {
         m_sig = sigma;
+        m_sigbar = xt::mean(m_sig)();
     }
 
     /**
@@ -358,6 +381,26 @@ public:
         double dsig = xt::amin(m_sigy - m_sig)();
         m_sig += dsig;
         m_sigbar += dsig;
+    }
+
+    /**
+     * @brief Take event driven step.
+     */
+    void eventDrivenStep()
+    {
+        this->shiftImposedShear();
+        this->makeWeakestFailureStep();
+    }
+
+    /**
+     * @brief Take `n` event driven steps.
+     * @param n Number of steps to take.
+     */
+    void eventDrivenSteps(size_t n)
+    {
+        for (size_t i = 0; i < n; ++i) {
+            this->eventDrivenStep();
+        }
     }
 
 protected:
