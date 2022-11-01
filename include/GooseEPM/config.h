@@ -91,10 +91,10 @@ using namespace xt::placeholders;
  * \throw std::runtime_error
  */
 #ifdef GOOSEEPM_ENABLE_ASSERT
-#define GOOSEEPM_ASSERT(expr, asssertion) \
+#define GOOSEEPM_ASSERT(expr, assertion) \
     GOOSEEPM_ASSERT_IMPL(expr, assertion, __FILE__, __LINE__, __FUNCTION__)
 #else
-#define GOOSEEPM_ASSERT(expr, asssertion)
+#define GOOSEEPM_ASSERT(expr, assertion)
 #endif
 
 /**
@@ -104,7 +104,7 @@ using namespace xt::placeholders;
  *
  * \throw std::runtime_error
  */
-#define GOOSEEPM_REQUIRE(expr, asssertion) \
+#define GOOSEEPM_REQUIRE(expr, assertion) \
     GOOSEEPM_ASSERT_IMPL(expr, assertion, __FILE__, __LINE__, __FUNCTION__)
 
 /**
@@ -115,7 +115,7 @@ using namespace xt::placeholders;
  *
  * \throw std::runtime_error
  */
-#define GOOSEEPM_WIP_ASSERT(expr, asssertion) \
+#define GOOSEEPM_WIP_ASSERT(expr, assertion) \
     GOOSEEPM_ASSERT_IMPL(expr, assertion, __FILE__, __LINE__, __FUNCTION__)
 
 /**

@@ -24,14 +24,20 @@ public:
         const Y& sigmay_mean,
         const Z& sigmay_std,
         const S& sigmay_initstate,
-        uint64_t seed)
+        uint64_t seed,
+        double failure_rate,
+        double alpha,
+        bool fixed_stress)
     {
-        GOOSEEPM_REQUIRE(propagator.ndim() == 2, std::out_of_range);
+        GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_initstate, propagator.shape()), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, propagator.shape()), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_std, propagator.shape()), std::out_of_range);
 
         m_t = 0;
+        m_failure_rate = failure_rate;
+        m_alpha = alpha;
+        m_fixed_stress = fixed_stress;
         m_propagator = propagator;
         m_sigy_gen = prrng::pcg32_tensor<2>(sigmay_initstate);
         m_gen = prrng::pcg32(seed);
@@ -40,9 +46,11 @@ public:
         m_sigy = xt::empty<double>(sigmay_initstate.shape());
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
+        m_sigbar = xt::mean(m_sig)();
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
-            m_sigy.flat(i) = m_sigy_gen.flat(i).normal({}, m_sigy_mu.flat(i), m_sigy_std.flat(i));
+            m_sigy.flat(i) = m_sigy_gen.flat(i).normal(
+                std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
         }
 
         if (m_propagator.shape(0) % 2 == 0) {
@@ -68,7 +76,7 @@ public:
     template <class T>
     void restore(const T& sigmay_state, uint64_t state)
     {
-        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_state, m_sigy_gen.shape(), std::out_of_range));
+        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_state, m_sigy_gen.shape()), std::out_of_range);
         m_sigy_gen.restore(sigmay_state);
         m_gen.restore(state);
     }
@@ -77,16 +85,16 @@ public:
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
-        m_t += m_gen.expontial({}, m_failure_rate * nfailing);
-        auto i = randomNumberGenerator.randint({}, nfailing - 1);
-        size_t idx = m_shape(0) * failing[i][0] + failing[i][1];
+        m_t += m_gen.exponential(std::array<size_t, 0>{}, m_failure_rate * nfailing)();
+        size_t i = m_gen.randint(std::array<size_t, 0>{}, static_cast<size_t>(nfailing - 1))();
+        size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
         this->spatialParticleFailure(idx);
         return idx;
     }
 
     size_t makeWeakestFailureStep()
     {
-        size_t idx = xt::argmin(m_sigy - m_sig);
+        size_t idx = xt::argmin(m_sigy - m_sig)();
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
         if (x < 0) {
@@ -110,11 +118,12 @@ public:
      */
     void spatialParticleFailure(size_t idx)
     {
-        double dsig = m_sig.flat(idx) + m_gen.normal({}, 0.0, 0.01);
+        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 0>{}, 0.0, 0.01)();
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
-        m_sigy.flat(idx) = m_sigy_gen.flat(i).normal({}, m_sigy_mu.flat(i), m_sigy_std.flat(i));
+        m_sigy.flat(idx) = m_sigy_gen.flat(idx).normal(
+            std::array<size_t, 0>{}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))();
 
         auto index = xt::unravel_index(idx, m_sig.shape());
         size_t i0 = index[0];
@@ -136,13 +145,6 @@ public:
         }
 
         m_sig -= xt::mean(m_sig)() - m_sigbar;
-    }
-
-    double nextYieldStress(size_t idx)
-    {
-        double r = m_sigy_gen.flat(idx).next_double();
-        m_normal[i][j].quantile(r);
-        return r;
     }
 
 private:
@@ -178,9 +180,13 @@ protected:
     array_type::tensor<double, 2> m_sigy_std;
     array_type::tensor<double, 2> m_epsp;
     double m_t;
+    double m_failure_rate;
+    double m_alpha;
+    bool m_fixed_stress;
+    double m_sigbar;
     size_t m_imid;
     size_t m_jmid;
-}
+};
 
 } // namespace GooseEPM
 

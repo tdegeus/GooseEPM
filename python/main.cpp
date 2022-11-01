@@ -13,6 +13,7 @@
 #include <xtensor-python/xtensor_python_config.hpp>
 
 #define GOOSEEPM_USE_XTENSOR_PYTHON
+#include <GooseEPM/System.h>
 #include <GooseEPM/version.h>
 
 namespace py = pybind11;
@@ -51,4 +52,32 @@ PYBIND11_MODULE(_GooseEPM, mod)
     namespace M = GooseEPM;
 
     mod.def("version", &M::version, "Return version string.");
+
+    {
+        py::class_<M::SystemAthermal> cls(mod, "SystemAthermal");
+
+        cls.def(
+            py::init<
+                const xt::pytensor<double, 2>&,
+                const xt::pytensor<double, 2>&,
+                const xt::pytensor<double, 2>&,
+                const xt::pytensor<double, 2>&,
+                uint64_t,
+                double,
+                double,
+                bool>(),
+            "System",
+            py::arg("propagator"),
+            py::arg("sigmay_mean"),
+            py::arg("sigmay_std"),
+            py::arg("sigma_initstate"),
+            py::arg("seed"),
+            py::arg("alpha"),
+            py::arg("failure_rate"),
+            py::arg("fixed_stress"));
+
+        // cls.def_property_readonly("N", &SM::System::N, "Number of particles");
+
+        cls.def("__repr__", [](const M::SystemAthermal&) { return "<GooseEPM.SystemAthermal>"; });
+    }
 }
