@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import prrng
 from GooseEPM import SystemAthermal
 
 system = SystemAthermal(
@@ -14,6 +15,10 @@ system = SystemAthermal(
     sigmabar=...,
     fixed_stress=...,
 )
+
+gen = prrng.pcg32(0)
+system.sigma = gen.normal(system.shape, mu=0, std=0.1)
+system.initSigmaPropogator()
 
 nstep = 1000
 sigma = np.empty([nstep])

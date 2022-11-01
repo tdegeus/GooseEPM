@@ -80,6 +80,8 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("sigmabar") = 0,
             py::arg("fixed_stress") = false);
 
+        cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
+
         cls.def_property("t", &M::SystemAthermal::t, &M::SystemAthermal::set_t, "Current time");
 
         cls.def_property(

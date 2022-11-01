@@ -139,6 +139,15 @@ public:
     }
 
     /**
+     * @brief Return the shape.
+     * @return Shape
+     */
+    const auto& shape() const
+    {
+        return m_propagator.shape();
+    }
+
+    /**
      * @brief Set the time
      * @param t Time.
      */
