@@ -82,14 +82,23 @@ inline T create_distance_lookup(const T& distance)
  *
  *      -   Imposed stress: take (a) failure step(s) using
  *          failureStep() or failureSteps()
+ *
+ * Note that initialising a compatible stress field can be a bit costly.
+ * If you have access to a precomputed stress field, or you want to customise initialisation,
+ * you should use (in Python code):
+ *
+ *      system = SystemAthermal(..., init_stress=False)
+ *      system.stress = precomputed_stress
+ *
+ * If not, by default initSigmaPropogator(0.1) is used.
  */
 class SystemAthermal {
 
 public:
     /**
      * @param propagator The propagator `[M, N]`.
-     * @param drow The distance that each row of the propagator corresponds to `[M]`.
-     * @param dcol The distance that each column of the propagator corresponds to `[N]`.
+     * @param distances_rows The distance that each row of the propagator corresponds to `[M]`.
+     * @param distances_cols The distance that each column of the propagator corresponds to `[N]`.
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
      * @param sigmay_std Standard deviation of the yield stress for every block `[M, N]`.
      * @param seed Seed of the random number generator.
@@ -97,23 +106,25 @@ public:
      * @param alpha Exponent characterising the shape of the potential.
      * @param sigmabar Mean stress to initialise the system.
      * @param fixed_stress If `true` the stress is kept constant.
+     * @param init_stress If `true` a random compatible stress is initialised.
      */
     template <class T, class D, class Y, class Z>
     SystemAthermal(
         const T& propagator,
-        const D& drow,
-        const D& dcol,
+        const D& distances_rows,
+        const D& distances_cols,
         const Y& sigmay_mean,
         const Z& sigmay_std,
         uint64_t seed,
         double failure_rate = 1,
         double alpha = 1.5,
         double sigmabar = 0,
-        bool fixed_stress = false)
+        bool fixed_stress = false,
+        bool init_stress = true)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
-        GOOSEEPM_REQUIRE(drow.size() == propagator.shape(0), std::out_of_range);
-        GOOSEEPM_REQUIRE(dcol.size() == propagator.shape(1), std::out_of_range);
+        GOOSEEPM_REQUIRE(distances_rows.size() == propagator.shape(0), std::out_of_range);
+        GOOSEEPM_REQUIRE(distances_cols.size() == propagator.shape(1), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, propagator.shape()), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_std, propagator.shape()), std::out_of_range);
 
@@ -122,19 +133,27 @@ public:
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
         m_propagator = propagator;
-        m_drow = detail::create_distance_lookup(drow);
-        m_dcol = detail::create_distance_lookup(dcol);
+        m_drow = detail::create_distance_lookup(distances_rows);
+        m_dcol = detail::create_distance_lookup(distances_cols);
         m_gen = prrng::pcg32(seed);
-        m_sig = sigmabar * xt::ones<double>(propagator.shape());
         m_epsp = xt::zeros<double>(propagator.shape());
         m_sigy = xt::empty<double>(propagator.shape());
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
-        m_sigbar = 0;
+        m_sigbar = sigmabar;
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
             m_sigy.flat(i) =
                 m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
+        }
+
+        if (init_stress) {
+            m_sig = xt::empty<double>(propagator.shape());
+            this->initSigmaPropogator(0.1);
+            this->set_sigmabar(sigmabar);
+        }
+        else {
+            m_sig = sigmabar * xt::ones<double>(propagator.shape());
         }
     }
 
@@ -259,14 +278,14 @@ public:
     }
 
     /**
-     * @brief Randomise the stress field changing the stress at `(i, j)` by a random value,
-     * while changing it by the same value (with a prefactor) at `(i +- delta_r, j +- delta_r)`.
+     * @brief Generate a stress field that is compatible, using a fast (approximative) technique.
      *
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      * @param delta_r Distance to use, see above.
      */
     void initSigmaFast(double sigma_std, size_t delta_r)
     {
+        m_sig.fill(0);
         ptrdiff_t d = static_cast<ptrdiff_t>(delta_r);
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
@@ -283,19 +302,17 @@ public:
                 m_sig.periodic(i - d, j - d) += 0.25 * dsig;
             }
         }
-
-        m_sig *= 0.5; // todo: clearify why this is needed
+        m_sig *= 0.5;
     }
 
     /**
-     * @brief Randomise the stress field changing the stress at `(i, j)` by a random value,
-     * and changing the entire surrounding based on that value using the propagator.
+     * @brief Generate a stress field that is compatible. Internally the propagator is used.
      *
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      */
     void initSigmaPropogator(double sigma_std)
     {
-        m_sig.fill(0); // todo: I would think that this is a bug
+        m_sig.fill(0);
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
@@ -445,6 +462,7 @@ protected:
     double m_alpha; ///< Exponent characterising the shape of the potential.
     bool m_fixed_stress; ///< Flag indicating whether the stress is fixed.
     double m_sigbar; ///< Average stress.
+    bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
 };
 
 } // namespace GooseEPM

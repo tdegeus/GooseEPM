@@ -5,24 +5,17 @@ from GooseEPM import SystemAthermal
 
 system = SystemAthermal(
     propagator=...,
-    drow=...,
-    dcol=...,
+    distances_rows=...,
+    distances_cols=...,
     sigmay_mean=...,
     sigmay_std=...,
     seed=...,
     failure_rate=...,
-    alpha=...,
-    sigmabar=...,
-    fixed_stress=...,
 )
 
-gen = prrng.pcg32(0)
-system.sigma = gen.normal(system.shape, mu=0, std=0.1)
-system.initSigmaPropogator()
-
 nstep = 1000
-sigma = np.empty([nstep])
-epsp = np.empty([nstep])
+sigma = np.empty([nstep])  # average stress
+epsp = np.empty([nstep])  # average plastic strain
 sigma[0] = system.sigmabar
 epsp[0] = np.mean(system.epsp)
 

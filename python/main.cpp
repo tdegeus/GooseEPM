@@ -67,18 +67,20 @@ PYBIND11_MODULE(_GooseEPM, mod)
                 double,
                 double,
                 double,
+                bool,
                 bool>(),
             "System",
             py::arg("propagator"),
-            py::arg("drow"),
-            py::arg("dcol"),
+            py::arg("distances_rows"),
+            py::arg("distances_cols"),
             py::arg("sigmay_mean"),
             py::arg("sigmay_std"),
             py::arg("seed"),
             py::arg("failure_rate") = 1,
             py::arg("alpha") = 1.5,
             py::arg("sigmabar") = 0,
-            py::arg("fixed_stress") = false);
+            py::arg("fixed_stress") = false,
+            py::arg("init_stress") = true);
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
