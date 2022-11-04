@@ -83,14 +83,24 @@ inline T create_distance_lookup(const T& distance)
  *      -   Imposed stress: take (a) failure step(s) using
  *          failureStep() or failureSteps()
  *
- * Note that initialising a compatible stress field can be a bit costly.
- * If you have access to a precomputed stress field, or you want to customise initialisation,
- * you should use (in Python code):
+ * Note that by default the stress is taken homogenous.
+ * To use a random stress field use (in Python code):
  *
- *      system = SystemAthermal(..., init_stress=False)
- *      system.stress = precomputed_stress
+ *      system = SystemAthermal(..., init_random_stress=True)
  *
- * If not, by default initSigmaPropogator(0.1) is used.
+ * which is simply shorthand for:
+ *
+ *      system = SystemAthermal()
+ *      system.initSigmaPropogator(0.1)
+ *
+ * Note that this can be a bit costly: it find a compatible stress field by applying the convolution
+ * between a random field and the propagator.
+ * Instead, you can use a pre-computed field (that you can much faster compute by computing the
+ * convolution in Fourier space) by:
+ *
+ *      system = SystemAthermal(..., init_random_stress=False)
+ *      system.stress = ...
+ *      system.sigbar = ...
  */
 class SystemAthermal {
 
@@ -106,7 +116,7 @@ public:
      * @param alpha Exponent characterising the shape of the potential.
      * @param sigmabar Mean stress to initialise the system.
      * @param fixed_stress If `true` the stress is kept constant.
-     * @param init_stress If `true` a random compatible stress is initialised.
+     * @param init_random_stress If `true` a random compatible stress is initialised.
      */
     template <class T, class D, class Y, class Z>
     SystemAthermal(
@@ -120,7 +130,7 @@ public:
         double alpha = 1.5,
         double sigmabar = 0,
         bool fixed_stress = false,
-        bool init_stress = true)
+        bool init_random_stress = true)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
         GOOSEEPM_REQUIRE(distances_rows.size() == propagator.shape(0), std::out_of_range);
@@ -147,7 +157,7 @@ public:
                 m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
         }
 
-        if (init_stress) {
+        if (init_random_stress) {
             m_sig = xt::empty<double>(propagator.shape());
             this->initSigmaPropogator(0.1);
             this->set_sigmabar(sigmabar);
@@ -307,6 +317,10 @@ public:
 
     /**
      * @brief Generate a stress field that is compatible. Internally the propagator is used.
+     * Note that this computes the convolution between a random field and the propagator.
+     * Since the propagator is defined in real space, this can ba quite costly.
+     * Instead, it is advised you compute the convolution in Fourier space, using the expression
+     * of the propagator in Fourier space.
      *
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      */
