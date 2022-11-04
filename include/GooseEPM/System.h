@@ -356,7 +356,7 @@ public:
             m_t += 1.0;
         }
         else {
-            m_t += std::exp(std::pow(200.0 * x, m_alpha));
+            m_t += std::exp(std::pow(200.0 * x, m_alpha)); // todo: why 200 x?
         }
 
         this->spatialParticleFailure(idx);
