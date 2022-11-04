@@ -5,8 +5,8 @@ from GooseEPM import SystemAthermal
 
 system = SystemAthermal(
     propagator=...,
-    dx=...,
-    dy=...,
+    drow=...,
+    dcol=...,
     sigmay_mean=...,
     sigmay_std=...,
     seed=...,

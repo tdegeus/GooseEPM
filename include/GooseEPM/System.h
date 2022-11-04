@@ -88,8 +88,8 @@ class SystemAthermal {
 public:
     /**
      * @param propagator The propagator `[M, N]`.
-     * @param dx The distance that each row of the propagator corresponds to `[M]`.
-     * @param dy The distance that each column of the propagator corresponds to `[N]`.
+     * @param drow The distance that each row of the propagator corresponds to `[M]`.
+     * @param dcol The distance that each column of the propagator corresponds to `[N]`.
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
      * @param sigmay_std Standard deviation of the yield stress for every block `[M, N]`.
      * @param seed Seed of the random number generator.
@@ -101,8 +101,8 @@ public:
     template <class T, class D, class Y, class Z>
     SystemAthermal(
         const T& propagator,
-        const D& dx,
-        const D& dy,
+        const D& drow,
+        const D& dcol,
         const Y& sigmay_mean,
         const Z& sigmay_std,
         uint64_t seed,
@@ -112,8 +112,8 @@ public:
         bool fixed_stress = false)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
-        GOOSEEPM_REQUIRE(dx.size() == propagator.shape(0), std::out_of_range);
-        GOOSEEPM_REQUIRE(dy.size() == propagator.shape(1), std::out_of_range);
+        GOOSEEPM_REQUIRE(drow.size() == propagator.shape(0), std::out_of_range);
+        GOOSEEPM_REQUIRE(dcol.size() == propagator.shape(1), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, propagator.shape()), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_std, propagator.shape()), std::out_of_range);
 
@@ -122,8 +122,8 @@ public:
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
         m_propagator = propagator;
-        m_dx = detail::create_distance_lookup(dx);
-        m_dy = detail::create_distance_lookup(dy);
+        m_drow = detail::create_distance_lookup(drow);
+        m_dcol = detail::create_distance_lookup(dcol);
         m_gen = prrng::pcg32(seed);
         m_sig = sigmabar * xt::ones<double>(propagator.shape());
         m_epsp = xt::zeros<double>(propagator.shape());
@@ -309,7 +309,7 @@ public:
                         }
                         else {
                             m_sig(k, l) +=
-                                m_propagator(m_dx.periodic(i - k), m_dy.periodic(j - l)) * dsig;
+                                m_propagator(m_drow.periodic(i - k), m_dcol.periodic(j - l)) * dsig;
                         }
                     }
                 }
@@ -389,7 +389,7 @@ public:
                 if (i == i0 && j == j0) {
                     continue;
                 }
-                m_sig(i, j) += m_propagator(m_dx.periodic(i - i0), m_dx.periodic(j - j0)) * dsig;
+                m_sig(i, j) += m_propagator(m_drow.periodic(i - i0), m_drow.periodic(j - j0)) * dsig;
             }
         }
 
@@ -433,8 +433,8 @@ public:
 protected:
     prrng::pcg32 m_gen; ///< Random number generator.
     array_type::tensor<double, 2> m_propagator; ///< Propagator.
-    array_type::tensor<ptrdiff_t, 1> m_dx; ///< Lookup list: distance -> row in #m_propagator.
-    array_type::tensor<ptrdiff_t, 1> m_dy; ///< Lookup list: distance -> column in #m_propagator.
+    array_type::tensor<ptrdiff_t, 1> m_drow; ///< Lookup list: distance -> row in #m_propagator.
+    array_type::tensor<ptrdiff_t, 1> m_dcol; ///< Lookup list: distance -> column in #m_propagator.
     array_type::tensor<double, 2> m_sig; ///< Stress.
     array_type::tensor<double, 2> m_sigy; ///< Yield stress.
     array_type::tensor<double, 2> m_sigy_mu; ///< Mean yield stress.
