@@ -56,12 +56,12 @@ inline T create_distance_lookup(const T& distance)
     value_type N = static_cast<value_type>(distance.size());
     T ret = xt::empty<value_type>({2 * N - 1});
 
-    for (value_type i = 0; i < upper; ++i) {
-        ret(i) = xt::argmax(xt::equal(distance, i))();
-    }
-    for (value_type i = upper; i < N; ++i) {
-        ret(i) = xt::argmax(xt::equal(distance, i - N))();
-    }
+    // for (value_type i = 0; i < upper; ++i) {
+    //     ret(i) = xt::argmax(xt::equal(distance, i))();
+    // }
+    // for (value_type i = upper; i < N; ++i) {
+    //     ret(i) = xt::argmax(xt::equal(distance, i - N))();
+    // }
     // for (value_type i = -1; i >= lower; --i) {
     //     ret.periodic(i) = xt::argmax(xt::equal(distance, i))();
     // }
