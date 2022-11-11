@@ -56,9 +56,13 @@ inline T create_distance_lookup(const T& distance)
     value_type N = static_cast<value_type>(distance.size());
     T ret = xt::empty<value_type>({2 * N - 1});
 
-    // for (value_type i = 0; i < upper; ++i) {
-    //     ret(i) = xt::argmax(xt::equal(distance, i))();
-    // }
+    std::cout << "lower = " << lower << std::endl;
+    std::cout << "upper = " << upper << std::endl;
+    std::cout << "size = " << 2 * N - 1 << std::endl;
+
+    for (value_type i = 0; i < upper; ++i) {
+        ret(i) = xt::argmax(xt::equal(distance, i))();
+    }
     // for (value_type i = upper; i < N; ++i) {
     //     ret(i) = xt::argmax(xt::equal(distance, i - N))();
     // }
