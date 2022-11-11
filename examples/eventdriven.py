@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import prrng
 from GooseEPM import SystemAthermal
 
 system = SystemAthermal(

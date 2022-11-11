@@ -420,7 +420,8 @@ public:
                 if (i == i0 && j == j0) {
                     continue;
                 }
-                m_sig(i, j) += m_propagator(m_drow.periodic(i - i0), m_drow.periodic(j - j0)) * dsig;
+                m_sig(i, j) +=
+                    m_propagator(m_drow.periodic(i - i0), m_drow.periodic(j - j0)) * dsig;
             }
         }
 
