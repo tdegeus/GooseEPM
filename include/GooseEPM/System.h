@@ -59,8 +59,13 @@ inline T create_distance_lookup(const T& distance)
     std::cout << "lower = " << lower << std::endl;
     std::cout << "upper = " << upper << std::endl;
     std::cout << "size = " << 2 * N - 1 << std::endl;
+    std::cout << "ret = " << ret << std::endl;
+    std::cout << "distance = " << distance << std::endl;
 
     for (value_type i = 0; i < upper; ++i) {
+        std::cout << "i = " << i << std::endl;
+        std::cout << "xt::equal(distance, i) = " << xt::equal(distance, i) << std::endl;
+        std::cout << "xt::argmax(xt::equal(distance, i)) = " << xt::argmax(xt::equal(distance, i)) << std::endl;
         ret(i) = xt::argmax(xt::equal(distance, i))();
     }
     // for (value_type i = upper; i < N; ++i) {
