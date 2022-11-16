@@ -57,11 +57,11 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         cls.def(
             py::init<
-                const xt::pytensor<double, 2>&,
-                const xt::pytensor<ptrdiff_t, 1>&,
-                const xt::pytensor<ptrdiff_t, 1>&,
-                const xt::pytensor<double, 2>&,
-                const xt::pytensor<double, 2>&,
+                const M::array_type::tensor<double, 2>&,
+                const M::array_type::tensor<ptrdiff_t, 1>&,
+                const M::array_type::tensor<ptrdiff_t, 1>&,
+                const M::array_type::tensor<double, 2>&,
+                const M::array_type::tensor<double, 2>&,
                 uint64_t,
                 double,
                 double,
@@ -79,7 +79,7 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("alpha") = 1.5,
             py::arg("sigmabar") = 0,
             py::arg("fixed_stress") = false,
-            py::arg("init_random_stress") = false);
+            py::arg("init_random_stress") = true);
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
@@ -151,7 +151,7 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         submod.def(
             "create_distance_lookup",
-            &SM::create_distance_lookup<xt::pytensor<ptrdiff_t, 1>>,
+            &SM::create_distance_lookup<M::array_type::tensor<ptrdiff_t, 1>>,
             "Create a distance lookup.",
             py::arg("distance"));
     }

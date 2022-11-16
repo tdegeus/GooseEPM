@@ -18,6 +18,36 @@ namespace GooseEPM {
 
 namespace detail {
 
+template <class T>
+inline size_t argmax(const T& a)
+{
+    return std::distance(a.begin(), std::max_element(a.begin(), a.end()));
+}
+
+template <class T>
+inline size_t argmin(const T& a)
+{
+    return std::distance(a.begin(), std::min_element(a.begin(), a.end()));
+}
+
+template <class T>
+inline typename T::value_type mean(const T& a)
+{
+    return std::accumulate(a.begin(), a.end(), 0) / static_cast<double>(a.size());
+}
+
+template <class T>
+inline typename T::value_type amin(const T& a)
+{
+    return *min_element(a.begin(), a.end());
+}
+
+template <class T>
+inline typename T::value_type amax(const T& a)
+{
+    return *max_element(a.begin(), a.end());
+}
+
 /**
  * @brief Create a distance lookup as follows:
  *
@@ -47,9 +77,10 @@ inline T create_distance_lookup(const T& distance)
     using value_type = typename T::value_type;
     static_assert(std::numeric_limits<value_type>::is_integer, "Distances must be integer");
     static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
+    GOOSEEPM_REQUIRE(distance.dimension() == 1, std::invalid_argument);
 
-    value_type lower = xt::amin(distance)();
-    value_type upper = xt::amax(distance)() + 1;
+    value_type lower = detail::amin(distance);
+    value_type upper = detail::amax(distance) + 1;
     auto d = xt::arange<value_type>(lower, upper);
     GOOSEEPM_REQUIRE(xt::all(xt::in1d(distance, d)), std::invalid_argument);
     GOOSEEPM_REQUIRE(distance.size() == upper - lower, std::invalid_argument);
@@ -58,16 +89,16 @@ inline T create_distance_lookup(const T& distance)
     T ret = xt::empty<value_type>({2 * N - 1});
 
     for (value_type i = 0; i < upper; ++i) {
-        ret(i) = xt::argmax(xt::equal(distance, i))();
+        ret(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = upper; i < N; ++i) {
-        ret(i) = xt::argmax(xt::equal(distance, i - N))();
+        ret(i) = detail::argmax(xt::equal(distance, i - N));
     }
     for (value_type i = -1; i >= lower; --i) {
-        ret.periodic(i) = xt::argmax(xt::equal(distance, i))();
+        ret.periodic(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = lower; i > -N; --i) {
-        ret.periodic(i) = xt::argmax(xt::equal(distance, N + i))();
+        ret.periodic(i) = detail::argmax(xt::equal(distance, N + i));
     }
 
     return ret;
@@ -119,13 +150,12 @@ public:
      * @param fixed_stress If `true` the stress is kept constant.
      * @param init_random_stress If `true` a random compatible stress is initialised.
      */
-    template <class T, class D, class Y, class Z>
     SystemAthermal(
-        const T& propagator,
-        const D& distances_rows,
-        const D& distances_cols,
-        const Y& sigmay_mean,
-        const Z& sigmay_std,
+        const array_type::tensor<double, 2>& propagator,
+        const array_type::tensor<ptrdiff_t, 1>& distances_rows,
+        const array_type::tensor<ptrdiff_t, 1>& distances_cols,
+        const array_type::tensor<double, 2>& sigmay_mean,
+        const array_type::tensor<double, 2>& sigmay_std,
         uint64_t seed,
         double failure_rate = 1,
         double alpha = 1.5,
@@ -155,7 +185,7 @@ public:
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
             m_sigy.flat(i) =
-                m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
+                m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(i), m_sigy_std.flat(i))(0);
         }
 
         if (init_random_stress) {
@@ -276,7 +306,7 @@ public:
     void set_sigmabar(double sigmabar)
     {
         m_sigbar = sigmabar;
-        m_sig -= xt::mean(m_sig)() - m_sigbar;
+        m_sig -= detail::mean(m_sig) - m_sigbar;
     }
 
     /**
@@ -301,7 +331,7 @@ public:
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-                double dsig = m_gen.normal(std::array<size_t, 0>{}, 0, sigma_std)();
+                double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
                 m_sig(i, j) += dsig;
                 m_sig.periodic(i - d, j) -= 0.5 * dsig;
                 m_sig.periodic(i + d, j) -= 0.5 * dsig;
@@ -332,7 +362,7 @@ public:
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
 
-                double dsig = m_gen.normal(std::array<size_t, 0>{}, 0, sigma_std)();
+                double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
 
                 for (ptrdiff_t k = 0; k < m_sig.shape(0); ++k) {
                     for (ptrdiff_t l = 0; l < m_sig.shape(1); ++l) {
@@ -368,8 +398,8 @@ public:
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
-        m_t += m_gen.exponential(std::array<size_t, 0>{}, m_failure_rate * nfailing)();
-        size_t i = m_gen.randint(std::array<size_t, 0>{}, static_cast<size_t>(nfailing - 1))();
+        m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
+        size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
         this->spatialParticleFailure(idx);
         return idx;
@@ -381,7 +411,7 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = xt::argmin(m_sigy - m_sig)();
+        size_t idx = detail::argmin(m_sigy - m_sig);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
         if (x < 0) {
@@ -405,12 +435,12 @@ public:
      */
     void spatialParticleFailure(size_t idx)
     {
-        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 0>{}, 0.0, 0.01)();
+        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
         m_sigy.flat(idx) =
-            m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))();
+            m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))(0);
 
         auto index = xt::unravel_index(idx, m_sig.shape());
         ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
@@ -430,7 +460,7 @@ public:
             m_sigbar -= dsig / static_cast<double>(m_sig.size());
         }
 
-        m_sig -= xt::mean(m_sig)() - m_sigbar;
+        m_sig -= detail::mean(m_sig) - m_sigbar;
     }
 
     /**
@@ -438,7 +468,7 @@ public:
      */
     void shiftImposedShear()
     {
-        double dsig = xt::amin(m_sigy - m_sig)();
+        double dsig = detail::amin(m_sigy - m_sig);
         m_sig += dsig;
         m_sigbar += dsig;
     }
