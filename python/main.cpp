@@ -8,7 +8,6 @@
 #include <pybind11/stl.h>
 
 #define FORCE_IMPORT_ARRAY
-#include <xtensor-python/pyarray.hpp>
 #include <xtensor-python/pytensor.hpp>
 #include <xtensor-python/xtensor_python_config.hpp>
 
