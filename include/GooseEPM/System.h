@@ -47,6 +47,7 @@ inline T create_distance_lookup(const T& distance)
     using value_type = typename T::value_type;
     static_assert(std::numeric_limits<value_type>::is_integer, "Distances must be integer");
     static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
+    GOOSEEPM_REQUIRE(distance.dimension() == 1, std::invalid_argument);
 
     value_type lower = xt::amin(distance)();
     value_type upper = xt::amax(distance)() + 1;
@@ -57,18 +58,22 @@ inline T create_distance_lookup(const T& distance)
     value_type N = static_cast<value_type>(distance.size());
     T ret = xt::empty<value_type>({2 * N - 1});
 
-    // for (value_type i = 0; i < upper; ++i) {
-    //     ret(i) = xt::argmax(xt::equal(distance, i))();
-    // }
-    // for (value_type i = upper; i < N; ++i) {
-    //     ret(i) = xt::argmax(xt::equal(distance, i - N))();
-    // }
-    // for (value_type i = -1; i >= lower; --i) {
-    //     ret.periodic(i) = xt::argmax(xt::equal(distance, i))();
-    // }
-    // for (value_type i = lower; i > -N; --i) {
-    //     ret.periodic(i) = xt::argmax(xt::equal(distance, N + i))();
-    // }
+    for (value_type i = 0; i < upper; ++i) {
+        array_type::tensor<bool, 1> e = xt::equal(distance, i);
+        ret(i) = xt::argmax(e)();
+    }
+    for (value_type i = upper; i < N; ++i) {
+        array_type::tensor<bool, 1> e = xt::equal(distance, i - N);
+        ret(i) = xt::argmax(e)();
+    }
+    for (value_type i = -1; i >= lower; --i) {
+        array_type::tensor<bool, 1> e = xt::equal(distance, i);
+        ret.periodic(i) = xt::argmax(e)();
+    }
+    for (value_type i = lower; i > -N; --i) {
+        array_type::tensor<bool, 1> e = xt::equal(distance, N + i);
+        ret.periodic(i) = xt::argmax(e)();
+    }
 
     return ret;
 }
