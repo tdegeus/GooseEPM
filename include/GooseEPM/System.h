@@ -157,10 +157,10 @@ public:
         m_sigy_std = sigmay_std;
         m_sigbar = sigmabar;
 
-        // for (size_t i = 0; i < m_sigy.size(); ++i) {
-        //     m_sigy.flat(i) =
-        //         m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
-        // }
+        for (size_t i = 0; i < m_sigy.size(); ++i) {
+            m_sigy.flat(i) =
+                m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
+        }
 
         // if (init_random_stress) {
         //     m_sig = xt::empty<double>(propagator.shape());
