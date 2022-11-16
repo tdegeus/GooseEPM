@@ -120,13 +120,12 @@ public:
      * @param fixed_stress If `true` the stress is kept constant.
      * @param init_random_stress If `true` a random compatible stress is initialised.
      */
-    template <class T, class D, class Y, class Z>
     SystemAthermal(
-        const T& propagator,
-        const D& distances_rows,
-        const D& distances_cols,
-        const Y& sigmay_mean,
-        const Z& sigmay_std,
+        const array_type::tensor<double, 2>& propagator,
+        const array_type::tensor<ptrdiff_t, 1>& distances_rows,
+        const array_type::tensor<ptrdiff_t, 1>& distances_cols,
+        const array_type::tensor<double, 2>& sigmay_mean,
+        const array_type::tensor<double, 2>& sigmay_std,
         uint64_t seed,
         double failure_rate = 1,
         double alpha = 1.5,
