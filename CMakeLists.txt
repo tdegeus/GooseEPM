@@ -40,8 +40,8 @@ endif()
 # Set target
 # ==========
 
-find_package(xtensor REQUIRED)
 find_package(prrng REQUIRED)
+find_package(xtensor REQUIRED)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
@@ -59,7 +59,6 @@ target_compile_definitions(${PROJECT_NAME} INTERFACE
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
-include(CTest)
 include("${PROJECT_NAME}Config.cmake")
 
 # Installation headers / CMake / pkg-config
@@ -185,16 +184,14 @@ if(BUILD_DOCS OR BUILD_ALL)
     set(DOXYGEN_JAVADOC_AUTOBRIEF YES)
     set(DOXYGEN_MACRO_EXPANSION YES)
     set(DOXYGEN_SOURCE_BROWSER YES)
-    set(DOXYGEN_GENERATE_XML YES)
     set(DOXYGEN_QUIET YES)
     set(DOXYGEN_WARN_IF_UNDOCUMENTED YES)
     set(DOXYGEN_WARN_AS_ERROR NO)
     set(DOXYGEN_HTML_COLORSTYLE TOGGLE)
     set(DOXYGEN_WARN_LOGFILE "${CMAKE_CURRENT_BINARY_DIR}/doxygen_warnings.log")
     set(DOXYGEN_ALIASES "license=@par License:")
-    set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")
     set(DOXYGEN_STRIP_FROM_INC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
     set(DOXYGEN_STRIP_FROM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include")
-    doxygen_add_docs(html "${CMAKE_CURRENT_SOURCE_DIR}/include" "README.md")
+    doxygen_add_docs(html "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 endif()
