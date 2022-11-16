@@ -1,7 +1,10 @@
+import faulthandler
 import unittest
 
 import numpy as np
 from GooseEPM import detail
+
+faulthandler.enable()
 
 
 class Test_detail(unittest.TestCase):
