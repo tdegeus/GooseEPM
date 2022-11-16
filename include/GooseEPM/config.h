@@ -1,12 +1,7 @@
 /**
- * Basic configuration:
- *
- * -   Include general dependencies.
- * -   Define assertions.
- *
- * @file config.h
+ * @file
  * @copyright Copyright 2022. Marko Popovic, Tom de Geus. All rights reserved.
- * @license This project is released under the GNU Public License (GPLv3).
+ * @license This project is released under the GNU Public License (MIT).
  */
 
 #ifndef GOOSEEPM_CONFIG_H
@@ -15,49 +10,8 @@
 /**
  * \cond
  */
-#define _USE_MATH_DEFINES // to use "M_PI" from "math.h"
-/**
- * \endcond
- */
-
-#include <algorithm>
-#include <array>
-#include <assert.h>
-#include <cstdlib>
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <math.h>
-#include <memory>
-#include <numeric>
-#include <string>
-#include <vector>
-
-#include <xtensor/xadapt.hpp>
-#include <xtensor/xarray.hpp>
-#include <xtensor/xfixed.hpp>
-#include <xtensor/xinfo.hpp>
-#include <xtensor/xio.hpp>
-#include <xtensor/xlayout.hpp>
-#include <xtensor/xmath.hpp>
-#include <xtensor/xnoalias.hpp>
-#include <xtensor/xset_operation.hpp>
-#include <xtensor/xshape.hpp>
-#include <xtensor/xsort.hpp>
-#include <xtensor/xstrided_view.hpp>
-#include <xtensor/xtensor.hpp>
-#include <xtensor/xutils.hpp>
-#include <xtensor/xview.hpp>
-
-/**
- * \cond
- */
-using namespace xt::placeholders;
-
 #define Q(x) #x
 #define QUOTE(x) Q(x)
-
-#define UNUSED(p) ((void)(p))
 
 #define GOOSEEPM_WARNING_IMPL(message, file, line, function) \
     std::cout << std::string(file) + ":" + std::to_string(line) + " (" + std::string(function) + \
