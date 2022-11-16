@@ -159,7 +159,7 @@ public:
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
             m_sigy.flat(i) =
-                m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
+                m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(i), m_sigy_std.flat(i))(0);
         }
 
         // if (init_random_stress) {
