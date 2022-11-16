@@ -44,6 +44,7 @@ namespace detail {
 template <class T>
 inline T create_distance_lookup(const T& distance)
 {
+    return distance;
     using value_type = typename T::value_type;
     static_assert(std::numeric_limits<value_type>::is_integer, "Distances must be integer");
     static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
