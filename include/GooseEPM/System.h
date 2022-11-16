@@ -287,7 +287,7 @@ public:
     void set_sigma(const array_type::tensor<double, 2>& sigma)
     {
         m_sig = sigma;
-        m_sigbar = xt::mean(m_sig)();
+        m_sigbar = detail::mean(m_sig);
     }
 
     /**
