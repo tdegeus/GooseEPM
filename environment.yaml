@@ -11,6 +11,5 @@ dependencies:
 - python
 - scikit-build
 - setuptools_scm
-- xsimd
 - xtensor
 - xtensor-python
