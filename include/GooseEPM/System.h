@@ -18,6 +18,36 @@ namespace GooseEPM {
 
 namespace detail {
 
+template <class T>
+inline size_t argmax(const T& a)
+{
+    return std::distance(a.begin(), std::max_element(a.begin(), a.end()));
+}
+
+template <class T>
+inline size_t argmin(const T& a)
+{
+    return std::distance(a.begin(), std::min_element(a.begin(), a.end()));
+}
+
+template <class T>
+inline typename T::value_type mean(const T& a)
+{
+    return std::accumulate(a.begin(), a.end(), 0) / static_cast<double>(a.size());
+}
+
+template <class T>
+inline typename T::value_type amin(const T& a)
+{
+    return *min_element(a.begin(), a.end());
+}
+
+template <class T>
+inline typename T::value_type amax(const T& a)
+{
+    return *max_element(a.begin(), a.end());
+}
+
 /**
  * @brief Create a distance lookup as follows:
  *
@@ -49,8 +79,8 @@ inline T create_distance_lookup(const T& distance)
     static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
     GOOSEEPM_REQUIRE(distance.dimension() == 1, std::invalid_argument);
 
-    value_type lower = xt::amin(distance)();
-    value_type upper = xt::amax(distance)() + 1;
+    value_type lower = detail::amin(distance);
+    value_type upper = detail::amax(distance) + 1;
     auto d = xt::arange<value_type>(lower, upper);
     GOOSEEPM_REQUIRE(xt::all(xt::in1d(distance, d)), std::invalid_argument);
     GOOSEEPM_REQUIRE(distance.size() == upper - lower, std::invalid_argument);
@@ -59,20 +89,16 @@ inline T create_distance_lookup(const T& distance)
     T ret = xt::empty<value_type>({2 * N - 1});
 
     for (value_type i = 0; i < upper; ++i) {
-        array_type::tensor<bool, 1> e = xt::equal(distance, i);
-        ret(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
+        ret(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = upper; i < N; ++i) {
-        array_type::tensor<bool, 1> e = xt::equal(distance, i - N);
-        ret(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
+        ret(i) = detail::argmax(xt::equal(distance, i - N));
     }
     for (value_type i = -1; i >= lower; --i) {
-        array_type::tensor<bool, 1> e = xt::equal(distance, i);
-        ret.periodic(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
+        ret.periodic(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = lower; i > -N; --i) {
-        array_type::tensor<bool, 1> e = xt::equal(distance, N + i);
-        ret.periodic(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
+        ret.periodic(i) = detail::argmax(xt::equal(distance, N + i));
     }
 
     return ret;
@@ -280,7 +306,7 @@ public:
     void set_sigmabar(double sigmabar)
     {
         m_sigbar = sigmabar;
-        m_sig -= xt::mean(m_sig)() - m_sigbar;
+        m_sig -= detail::mean(m_sig) - m_sigbar;
     }
 
     /**
@@ -385,7 +411,7 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = xt::argmin(m_sigy - m_sig)();
+        size_t idx = detail::argmin(m_sigy - m_sig);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
         if (x < 0) {
@@ -434,7 +460,7 @@ public:
             m_sigbar -= dsig / static_cast<double>(m_sig.size());
         }
 
-        m_sig -= xt::mean(m_sig)() - m_sigbar;
+        m_sig -= detail::mean(m_sig) - m_sigbar;
     }
 
     /**
@@ -442,7 +468,7 @@ public:
      */
     void shiftImposedShear()
     {
-        double dsig = xt::amin(m_sigy - m_sig)();
+        double dsig = detail::amin(m_sigy - m_sig);
         m_sig += dsig;
         m_sigbar += dsig;
     }
