@@ -60,19 +60,19 @@ inline T create_distance_lookup(const T& distance)
 
     for (value_type i = 0; i < upper; ++i) {
         array_type::tensor<bool, 1> e = xt::equal(distance, i);
-        ret(i) = xt::argmax(e)();
+        ret(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
     }
     for (value_type i = upper; i < N; ++i) {
         array_type::tensor<bool, 1> e = xt::equal(distance, i - N);
-        ret(i) = xt::argmax(e)();
+        ret(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
     }
     for (value_type i = -1; i >= lower; --i) {
         array_type::tensor<bool, 1> e = xt::equal(distance, i);
-        ret.periodic(i) = xt::argmax(e)();
+        ret.periodic(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
     }
     for (value_type i = lower; i > -N; --i) {
         array_type::tensor<bool, 1> e = xt::equal(distance, N + i);
-        ret.periodic(i) = xt::argmax(e)();
+        ret.periodic(i) = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
     }
 
     return ret;
