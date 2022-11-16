@@ -148,8 +148,8 @@ public:
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
         m_propagator = propagator;
-        // m_drow = detail::create_distance_lookup(distances_rows);
-        // m_dcol = detail::create_distance_lookup(distances_cols);
+        m_drow = detail::create_distance_lookup(distances_rows);
+        m_dcol = detail::create_distance_lookup(distances_cols);
         m_gen = prrng::pcg32(seed);
         m_epsp = xt::zeros<double>(propagator.shape());
         m_sigy = xt::empty<double>(propagator.shape());
