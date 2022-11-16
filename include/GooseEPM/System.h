@@ -148,8 +148,8 @@ public:
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
         m_propagator = propagator;
-        m_drow = detail::create_distance_lookup(distances_rows);
-        m_dcol = detail::create_distance_lookup(distances_cols);
+        // m_drow = detail::create_distance_lookup(distances_rows);
+        // m_dcol = detail::create_distance_lookup(distances_cols);
         m_gen = prrng::pcg32(seed);
         m_epsp = xt::zeros<double>(propagator.shape());
         m_sigy = xt::empty<double>(propagator.shape());
@@ -157,19 +157,19 @@ public:
         m_sigy_std = sigmay_std;
         m_sigbar = sigmabar;
 
-        for (size_t i = 0; i < m_sigy.size(); ++i) {
-            m_sigy.flat(i) =
-                m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
-        }
+        // for (size_t i = 0; i < m_sigy.size(); ++i) {
+        //     m_sigy.flat(i) =
+        //         m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(i), m_sigy_std.flat(i))();
+        // }
 
-        if (init_random_stress) {
-            m_sig = xt::empty<double>(propagator.shape());
-            this->initSigmaPropogator(0.1);
-            this->set_sigmabar(sigmabar);
-        }
-        else {
-            m_sig = sigmabar * xt::ones<double>(propagator.shape());
-        }
+        // if (init_random_stress) {
+        //     m_sig = xt::empty<double>(propagator.shape());
+        //     this->initSigmaPropogator(0.1);
+        //     this->set_sigmabar(sigmabar);
+        // }
+        // else {
+        //     m_sig = sigmabar * xt::ones<double>(propagator.shape());
+        // }
     }
 
     /**

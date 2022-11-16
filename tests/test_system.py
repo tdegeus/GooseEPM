@@ -29,7 +29,7 @@ class Test_detail(unittest.TestCase):
             seed=0,
         )
 
-        system.eventDrivenSteps(100)
+        # system.eventDrivenSteps(100)
 
 
 if __name__ == "__main__":
