@@ -79,7 +79,7 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("alpha") = 1.5,
             py::arg("sigmabar") = 0,
             py::arg("fixed_stress") = false,
-            py::arg("init_random_stress") = false);
+            py::arg("init_random_stress") = true);
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
