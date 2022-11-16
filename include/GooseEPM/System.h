@@ -162,14 +162,14 @@ public:
                 m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(i), m_sigy_std.flat(i))(0);
         }
 
-        // if (init_random_stress) {
-        //     m_sig = xt::empty<double>(propagator.shape());
-        //     this->initSigmaPropogator(0.1);
-        //     this->set_sigmabar(sigmabar);
-        // }
-        // else {
-        //     m_sig = sigmabar * xt::ones<double>(propagator.shape());
-        // }
+        if (init_random_stress) {
+            m_sig = xt::empty<double>(propagator.shape());
+            this->initSigmaPropogator(0.1);
+            this->set_sigmabar(sigmabar);
+        }
+        else {
+            m_sig = sigmabar * xt::ones<double>(propagator.shape());
+        }
     }
 
     /**
@@ -305,7 +305,7 @@ public:
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-                double dsig = m_gen.normal(std::array<size_t, 0>{}, 0, sigma_std)();
+                double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
                 m_sig(i, j) += dsig;
                 m_sig.periodic(i - d, j) -= 0.5 * dsig;
                 m_sig.periodic(i + d, j) -= 0.5 * dsig;
@@ -336,7 +336,7 @@ public:
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
 
-                double dsig = m_gen.normal(std::array<size_t, 0>{}, 0, sigma_std)();
+                double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
 
                 for (ptrdiff_t k = 0; k < m_sig.shape(0); ++k) {
                     for (ptrdiff_t l = 0; l < m_sig.shape(1); ++l) {
@@ -372,8 +372,8 @@ public:
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
-        m_t += m_gen.exponential(std::array<size_t, 0>{}, m_failure_rate * nfailing)();
-        size_t i = m_gen.randint(std::array<size_t, 0>{}, static_cast<size_t>(nfailing - 1))();
+        m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
+        size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
         this->spatialParticleFailure(idx);
         return idx;
@@ -409,12 +409,12 @@ public:
      */
     void spatialParticleFailure(size_t idx)
     {
-        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 0>{}, 0.0, 0.01)();
+        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
         m_sigy.flat(idx) =
-            m_gen.normal(std::array<size_t, 0>{}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))();
+            m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))(0);
 
         auto index = xt::unravel_index(idx, m_sig.shape());
         ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
