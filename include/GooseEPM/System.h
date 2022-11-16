@@ -8,7 +8,8 @@
 #define GOOSEEPM_SYSTEM_H
 
 #include <prrng.h>
-#include <vector>
+#include <xtensor/xset_operation.hpp>
+#include <xtensor/xsort.hpp>
 
 #include "config.h"
 #include "version.h"
