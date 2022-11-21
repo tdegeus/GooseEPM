@@ -33,7 +33,8 @@ inline size_t argmin(const T& a)
 template <class T>
 inline typename T::value_type mean(const T& a)
 {
-    return std::accumulate(a.begin(), a.end(), 0) / static_cast<double>(a.size());
+    double init = 0.0;
+    return std::accumulate(a.begin(), a.end(), init) / static_cast<double>(a.size());
 }
 
 template <class T>
