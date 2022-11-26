@@ -29,6 +29,8 @@ class Test_detail(unittest.TestCase):
             seed=0,
         )
 
+        self.assertAlmostEqual(system.sigmabar, np.mean(system.sigma))
+
         system.eventDrivenSteps(100)
 
 
