@@ -10,6 +10,7 @@
 #include <prrng.h>
 #include <xtensor/xset_operation.hpp>
 #include <xtensor/xsort.hpp>
+#include <unordered_set>
 
 #include "config.h"
 #include "version.h"
@@ -473,6 +474,16 @@ public:
         m_sig -= detail::mean(m_sig) - m_sigbar; 
 
         //TODO: add all unstable particles to the unstable particles set
+        for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
+            for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
+                if (m_sig(i,j) >= m_sigy(i,j)) {
+                    //TODO: turn pair index into scalar index (how? please help Tom ;) )
+                    index = 0; //change this
+                    unstableParticles.insert(index);
+                }
+            }
+        }
+
     }
 
     /**
@@ -496,6 +507,13 @@ public:
     }
 
     //TODO: relax function, something like:
+    void relax()
+    {
+        while(unstableParticles.size > 0){
+            index = unstableParticles.begin(); //TODO: decide criterium instead of picking first one. Or maybe we should make them fail "all at once"?
+            this->spatialParticleFailure(index);
+        }
+    }
     /**
      * void relax()
      * {
@@ -536,6 +554,7 @@ protected:
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
     //TODO add set of unstable particle indexes
+    unordered_set<int> unstableParticles;
     
 };
 
