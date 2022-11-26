@@ -33,7 +33,7 @@ inline size_t argmin(const T& a)
 template <class T>
 inline typename T::value_type mean(const T& a)
 {
-    return std::accumulate(a.begin(), a.end(), 0) / static_cast<double>(a.size());
+    return std::accumulate(a.begin(), a.end(), 0.0) / static_cast<double>(a.size());
 }
 
 template <class T>
@@ -88,13 +88,16 @@ inline T create_distance_lookup(const T& distance)
     value_type N = static_cast<value_type>(distance.size());
     T ret = xt::empty<value_type>({2 * N - 1});
 
-    for (value_type i = 0; i < upper; ++i) {
+    for (value_type i = 0; i < upper; ++i) {        
+        //For POSITIVE distances that are actually in our given distance vector
         ret(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = upper; i < N; ++i) {
+        //For POSITIVE values that exceed the ones given in the distance vector
         ret(i) = detail::argmax(xt::equal(distance, i - N));
     }
     for (value_type i = -1; i >= lower; --i) {
+        //For NEGATIVE distances that are actually in our given distance vector
         ret.periodic(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = lower; i > -N; --i) {
@@ -414,7 +417,7 @@ public:
         size_t idx = detail::argmin(m_sigy - m_sig);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
-        if (x < 0) {
+        if (x < 0) { //TODO check if x<=0
             m_t += 1.0;
         }
         else {
@@ -435,7 +438,7 @@ public:
      */
     void spatialParticleFailure(size_t idx)
     {
-        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
+        double dsig = m_sig.flat(idx); //TODO why noise?
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
@@ -446,13 +449,19 @@ public:
         ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
         ptrdiff_t j0 = static_cast<ptrdiff_t>(index[1]);
 
+        //std::cout <<"(i0,j0) = " << i0 << ", "<< j0 << std::endl;
+
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
+                //std::cout <<"(i,j) = "<< i << ", "<< j << std::endl;
                 if (i == i0 && j == j0) {
                     continue;
                 }
                 m_sig(i, j) +=
-                    m_propagator(m_drow.periodic(i - i0), m_drow.periodic(j - j0)) * dsig;
+                    m_propagator(m_drow.periodic(i - i0), m_dcol.periodic(j - j0)) * dsig; 
+                    //m_propagator(i,j) * dsig; 
+                    //std::cout <<"lookups = "<< m_drow.periodic(i - i0) << ", "<< m_dcol.periodic(j - j0) << std::endl;
+                    //std::cout <<"propagator value = "<< m_propagator(m_drow.periodic(i - i0), m_dcol.periodic(j - j0)) << std::endl;
             }
         }
 
@@ -460,7 +469,9 @@ public:
             m_sigbar -= dsig / static_cast<double>(m_sig.size());
         }
 
-        m_sig -= detail::mean(m_sig) - m_sigbar;
+        m_sig -= detail::mean(m_sig) - m_sigbar; 
+
+        //TODO: add all unstable particles to the unstable particles set
     }
 
     /**
@@ -468,7 +479,7 @@ public:
      */
     void shiftImposedShear()
     {
-        double dsig = detail::amin(m_sigy - m_sig);
+        double dsig = detail::amin(m_sigy - m_sig); 
         m_sig += dsig;
         m_sigbar += dsig;
     }
@@ -480,7 +491,21 @@ public:
     {
         this->shiftImposedShear();
         this->makeWeakestFailureStep();
+        //TODO relax all unstable particles
     }
+
+    //TODO: relax function, something like:
+    /**
+     * void relax()
+     * {
+     *      while(unstableParticles.size > 0):
+     *          idx = choose the next particle to fail (by which criterium?)
+     *          this->spatialParticleFailure(idx)
+     * }
+     * 
+     * 
+     * 
+    */
 
     /**
      * @brief Take `n` event driven steps.
@@ -509,6 +534,8 @@ protected:
     bool m_fixed_stress; ///< Flag indicating whether the stress is fixed.
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
+    //TODO add set of unstable particle indexes
+    
 };
 
 } // namespace GooseEPM
