@@ -180,6 +180,7 @@ public:
         m_gen = prrng::pcg32(seed);
         m_epsp = xt::zeros<double>(propagator.shape());
         m_sigy = xt::empty<double>(propagator.shape());
+        m_unstable = xt::zeros<bool>(propagator.shape());
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
         m_sigbar = sigmabar;
@@ -197,6 +198,8 @@ public:
         else {
             m_sig = sigmabar * xt::ones<double>(propagator.shape());
         }
+
+        m_unstable = xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy);
     }
 
     /**
@@ -264,11 +267,13 @@ public:
 
     /**
      * @brief Set the yield stress.
+     * @note This function overrides the list of unstable blocks to currently unstable blocks.
      * @param sigmay Yield stress.
      */
     void set_sigmay(const array_type::tensor<double, 2>& sigmay)
     {
         m_sigy = sigmay;
+        m_unstable = xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy);
     }
 
     /**
@@ -282,13 +287,18 @@ public:
 
     /**
      * @brief Set the stress.
-     * If a fixed stress protocol is used the fixed stress is set to `mean(sigma)`.
+     * If a fixed stress protocol is used, the fixed stress is set to `mean(sigma)`.
+     * You can use SystemAthermal::set_sigmabar() to set the fixed stress manually.
+     *
+     * @note This function overrides the list of unstable blocks to currently unstable blocks.
+     *
      * @param sigma Stress.
      */
     void set_sigma(const array_type::tensor<double, 2>& sigma)
     {
         m_sig = sigma;
         m_sigbar = detail::mean(m_sig);
+        m_unstable = xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy);
     }
 
     /**
@@ -302,12 +312,14 @@ public:
 
     /**
      * @brief Set the imposed stress.
+     *
      * @param sigmabar Imposed stress.
      */
     void set_sigmabar(double sigmabar)
     {
         m_sigbar = sigmabar;
         m_sig -= detail::mean(m_sig) - m_sigbar;
+        m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
     }
 
     /**
@@ -392,16 +404,19 @@ public:
     }
 
     /**
-     * @brief Failure step.
+     * @brief Fail an unstable block, chosen randomly.
      * @return Index of the failing particle (flat index).
      */
-    size_t makeFailureStep()
+    size_t makeAthermalFailureStep()
     {
-        auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
+        auto failing = xt::argwhere(m_unstable);
         size_t nfailing = failing.size();
+
         m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
+
         size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
+
         this->spatialParticleFailure(idx);
         return idx;
     }
@@ -412,8 +427,12 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = detail::argmin(m_sigy - m_sig);
+        size_t idx = detail::argmin(xt::where(m_sig > 0, m_sigy - m_sig, m_sig - m_sigy));
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
+
+        if (m_sig.flat(idx) < 0) {
+            x = -x;
+        }
 
         if (x < 0) {
             m_t += 1.0;
@@ -430,7 +449,9 @@ public:
      * @brief Fail a block.
      *
      * -    Change the stress in the block.
+     * -    Stabilise the blocks.
      * -    Apply the propagator to change the stress in all 'surrounding' blocks.
+     * -    Check if there are any new unstable blocks.
      *
      * @param idx Flat index of the block to fail.
      */
@@ -438,6 +459,7 @@ public:
     {
         double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
+        m_unstable.flat(idx) = false;
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
         m_sigy.flat(idx) =
@@ -453,7 +475,7 @@ public:
                     continue;
                 }
                 m_sig(i, j) +=
-                    m_propagator(m_drow.periodic(i - i0), m_drow.periodic(j - j0)) * dsig;
+                    m_propagator(m_drow.periodic(i - i0), m_dcol.periodic(j - j0)) * dsig;
             }
         }
 
@@ -462,6 +484,7 @@ public:
         }
 
         m_sig -= detail::mean(m_sig) - m_sigbar;
+        m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
     }
 
     /**
@@ -472,15 +495,20 @@ public:
         double dsig = detail::amin(m_sigy - m_sig);
         m_sig += dsig;
         m_sigbar += dsig;
+        m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
     }
 
     /**
-     * @brief Take event driven step.
+     * @brief Take event driven step; shift the applied shear (by changing the stress) such that
+     * the weakest particle fails, then relax the system until there are no more unstable blocks.
      */
     void eventDrivenStep()
     {
         this->shiftImposedShear();
-        this->makeWeakestFailureStep();
+
+        while (xt::any(m_unstable)) {
+            this->makeWeakestFailureStep();
+        }
     }
 
     /**
@@ -504,6 +532,7 @@ protected:
     array_type::tensor<double, 2> m_sigy_mu; ///< Mean yield stress.
     array_type::tensor<double, 2> m_sigy_std; ///< Standard deviation of yield stress.
     array_type::tensor<double, 2> m_epsp; ///< Plastic strain.
+    array_type::tensor<bool, 2> m_unstable; ///< `true` if the block is unstable.
     double m_t; ///< Time.
     double m_failure_rate; ///< Failure rate.
     double m_alpha; ///< Exponent characterising the shape of the potential.
