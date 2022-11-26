@@ -393,13 +393,13 @@ public:
     }
 
     /**
-     * @brief Make `n` makeFailureStep() calls.
+     * @brief Make `n` makeAthermalFailureStep() calls.
      * @param n Number of steps to make.
      */
-    void makeFailureSteps(size_t n)
+    void makeAthermalFailureSteps(size_t n)
     {
         for (size_t i = 0; i < n; ++i) {
-            makeFailureStep();
+            makeAthermalFailureStep();
         }
     }
 
@@ -488,11 +488,11 @@ public:
     }
 
     /**
-     * @brief Take imposed shear step according the the event-driving protocol.
+     * @brief Change the imposed shear such that the next block fails.
      */
     void shiftImposedShear()
     {
-        double dsig = detail::amin(m_sigy - m_sig);
+        double dsig = detail::amin(m_sigy - m_sig) + 2.0 * std::numeric_limits<double>::epsilon();
         m_sig += dsig;
         m_sigbar += dsig;
         m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
