@@ -420,7 +420,9 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = detail::argmax(m_sig < -m_sigy || m_sig > m_sigy);
+        auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
+        size_t idx_min = detail::argmin(xt::filter( xt::abs(m_sig) - m_sigy, failing) );
+        size_t idx = failing(idx_min);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
         if (m_sig.flat(idx) < 0) {
