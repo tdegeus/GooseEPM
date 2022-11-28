@@ -180,7 +180,6 @@ public:
         m_gen = prrng::pcg32(seed);
         m_epsp = xt::zeros<double>(propagator.shape());
         m_sigy = xt::empty<double>(propagator.shape());
-        m_unstable = xt::zeros<bool>(propagator.shape());
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
         m_sigbar = sigmabar;
@@ -199,7 +198,6 @@ public:
             m_sig = sigmabar * xt::ones<double>(propagator.shape());
         }
 
-        m_unstable = xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy);
     }
 
     /**
@@ -273,7 +271,6 @@ public:
     void set_sigmay(const array_type::tensor<double, 2>& sigmay)
     {
         m_sigy = sigmay;
-        m_unstable = xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy);
     }
 
     /**
@@ -298,7 +295,6 @@ public:
     {
         m_sig = sigma;
         m_sigbar = detail::mean(m_sig);
-        m_unstable = xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy);
     }
 
     /**
@@ -319,7 +315,6 @@ public:
     {
         m_sigbar = sigmabar;
         m_sig -= detail::mean(m_sig) - m_sigbar;
-        m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
     }
 
     /**
@@ -409,7 +404,7 @@ public:
      */
     size_t makeAthermalFailureStep()
     {
-        auto failing = xt::argwhere(m_unstable);
+        auto failing = xt::argwhere(xt::where(m_sig >= 0.0, m_sig > m_sigy, m_sig < m_sigy));
         size_t nfailing = failing.size();
 
         m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
@@ -459,7 +454,6 @@ public:
     {
         double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
-        m_unstable.flat(idx) = false;
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
         m_sigy.flat(idx) =
@@ -484,7 +478,6 @@ public:
         }
 
         m_sig -= detail::mean(m_sig) - m_sigbar;
-        m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
     }
 
     /**
@@ -495,7 +488,6 @@ public:
         double dsig = detail::amin(m_sigy - m_sig) + 2.0 * std::numeric_limits<double>::epsilon();
         m_sig += dsig;
         m_sigbar += dsig;
-        m_unstable = m_unstable || (xt::where(m_sig > 0, m_sig > m_sigy, m_sig < m_sigy));
     }
 
     /**
@@ -506,7 +498,7 @@ public:
     {
         this->shiftImposedShear();
 
-        while (xt::any(m_unstable)) {
+        while (xt::any(xt::where(m_sig >= 0.0, m_sig > m_sigy, m_sig < m_sigy))) {
             this->makeWeakestFailureStep();
         }
     }
@@ -532,7 +524,6 @@ protected:
     array_type::tensor<double, 2> m_sigy_mu; ///< Mean yield stress.
     array_type::tensor<double, 2> m_sigy_std; ///< Standard deviation of yield stress.
     array_type::tensor<double, 2> m_epsp; ///< Plastic strain.
-    array_type::tensor<bool, 2> m_unstable; ///< `true` if the block is unstable.
     double m_t; ///< Time.
     double m_failure_rate; ///< Failure rate.
     double m_alpha; ///< Exponent characterising the shape of the potential.
