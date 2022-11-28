@@ -469,7 +469,6 @@ public:
         }
 
         m_sig -= detail::mean(m_sig) - m_sigbar;
-
     }
 
     /**
