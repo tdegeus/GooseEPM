@@ -493,7 +493,7 @@ public:
     {
         this->shiftImposedShear();
 
-        while (xt::any(m_sig < -m_sigy || m_sig > m_sigy) {
+        while (xt::any(m_sig < -m_sigy || m_sig > m_sigy)) {
             this->makeWeakestFailureStep();
         }
     }
