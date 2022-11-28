@@ -420,7 +420,7 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = detail::argmin(m_sig < -m_sigy || m_sig > m_sigy);
+        size_t idx = detail::argmax(m_sig < -m_sigy || m_sig > m_sigy);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
         if (m_sig.flat(idx) < 0) {
@@ -498,20 +498,25 @@ public:
      * the weakest particle fails, then relax the system until there are no more unstable blocks.
      *
      * @param max_steps Maximum number of iterations to allow.
-     * @return `0` if relaxation is successful, `1` if relaxation fails.
+     * @param max_steps_is_error Throw `std::runtime_error` if `max_steps` is reached.
+     * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
      */
-    int eventDrivenStep(size_t max_steps = 1000000)
+    size_t eventDrivenStep(size_t max_steps = 1000000, bool max_steps_is_error = true)
     {
         this->shiftImposedShear();
 
         for (size_t i = 0; i < max_steps; ++i) {
-            if (xt::all(m_sig < -m_sigy || m_sig > m_sigy)) {
-                return 0;
+            if (xt::all(m_sig >= -m_sigy && m_sig <= m_sigy)) {
+                return i;
             }
             this->makeWeakestFailureStep();
         }
 
-        return 1;
+        if (max_steps_is_error) {
+            throw std::runtime_error("Failed to converge.");
+        }
+
+        return max_steps;
     }
 
     //TODO: relax function, something like:
@@ -531,17 +536,17 @@ public:
      * @brief Take `n` event driven steps.
      * @param n Number of steps to take.
      * @param max_steps Maximum number of iterations to allow.
-     * @return Actual number of steps taken (underlying function stops at `max_steps`).
+     * @return Total number of iterations taken.
      */
     size_t eventDrivenSteps(size_t n, size_t max_steps = 1000000)
     {
+        size_t iter = 0;
+
         for (size_t i = 0; i < n; ++i) {
-            if (this->eventDrivenStep(max_steps)) {
-                return i;
-            }
+            iter += this->eventDrivenStep(max_steps, true);
         }
 
-        return n;
+        return iter;
     }
 
 protected:

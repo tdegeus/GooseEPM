@@ -142,12 +142,13 @@ PYBIND11_MODULE(_GooseEPM, mod)
             "eventDrivenStep",
             &M::SystemAthermal::eventDrivenStep,
             "Event-driven step",
-            py::arg("max_steps") = 1000000);
+            py::arg("max_steps") = 1000000,
+            py::arg("max_steps_is_error") = true);
 
         cls.def(
             "eventDrivenSteps",
             &M::SystemAthermal::eventDrivenSteps,
-            "Event-driven steps",
+            "Run `n` event-driven steps",
             py::arg("n"),
             py::arg("max_steps") = 1000000);
 
