@@ -89,7 +89,7 @@ inline T create_distance_lookup(const T& distance)
     value_type N = static_cast<value_type>(distance.size());
     T ret = xt::empty<value_type>({2 * N - 1});
 
-    for (value_type i = 0; i < upper; ++i) {        
+    for (value_type i = 0; i < upper; ++i) {
         //For POSITIVE distances that are actually in our given distance vector
         ret(i) = detail::argmax(xt::equal(distance, i));
     }
@@ -420,14 +420,8 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
-        size_t idx_min = detail::argmin(xt::filter( xt::abs(m_sig) - m_sigy, failing) );
-        size_t idx = failing(idx_min);
-        double x = m_sigy.flat(idx) - m_sig.flat(idx);
-
-        if (m_sig.flat(idx) < 0) {
-            x = -x;
-        }
+        size_t idx = detail::argmax(xt::abs(m_sig) - m_sigy);
+        double x = std::abs(m_sig.flat(idx)) - m_sigy.flat(idx);
 
         if (x < 0) {
             m_t += 1.0;
@@ -480,7 +474,7 @@ public:
             m_sigbar -= dsig / static_cast<double>(m_sig.size());
         }
 
-        m_sig -= detail::mean(m_sig) - m_sigbar; 
+        m_sig -= detail::mean(m_sig) - m_sigbar;
 
         //TODO: add all unstable particles to the unstable particles set
     }
@@ -529,9 +523,9 @@ public:
      *          idx = choose the next particle to fail (by which criterium?)
      *          this->spatialParticleFailure(idx)
      * }
-     * 
-     * 
-     * 
+     *
+     *
+     *
     */
 
     /**
@@ -568,7 +562,7 @@ protected:
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
     //TODO add set of unstable particle indexes
-    
+
 };
 
 } // namespace GooseEPM
