@@ -90,15 +90,12 @@ inline T create_distance_lookup(const T& distance)
     T ret = xt::empty<value_type>({2 * N - 1});
 
     for (value_type i = 0; i < upper; ++i) {
-        //For POSITIVE distances that are actually in our given distance vector
         ret(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = upper; i < N; ++i) {
-        //For POSITIVE values that exceed the ones given in the distance vector
         ret(i) = detail::argmax(xt::equal(distance, i - N));
     }
     for (value_type i = -1; i >= lower; --i) {
-        //For NEGATIVE distances that are actually in our given distance vector
         ret.periodic(i) = detail::argmax(xt::equal(distance, i));
     }
     for (value_type i = lower; i > -N; --i) {
@@ -446,7 +443,7 @@ public:
      */
     void spatialParticleFailure(size_t idx)
     {
-        double dsig = m_sig.flat(idx); //TODO why noise?
+        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
         m_sig.flat(idx) -= dsig;
         m_epsp.flat(idx) += dsig;
@@ -457,11 +454,8 @@ public:
         ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
         ptrdiff_t j0 = static_cast<ptrdiff_t>(index[1]);
 
-        //std::cout <<"(i0,j0) = " << i0 << ", "<< j0 << std::endl;
-
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-                //std::cout <<"(i,j) = "<< i << ", "<< j << std::endl;
                 if (i == i0 && j == j0) {
                     continue;
                 }
@@ -476,7 +470,6 @@ public:
 
         m_sig -= detail::mean(m_sig) - m_sigbar;
 
-        //TODO: add all unstable particles to the unstable particles set
     }
 
     /**
@@ -515,18 +508,6 @@ public:
         return max_steps;
     }
 
-    //TODO: relax function, something like:
-    /**
-     * void relax()
-     * {
-     *      while(unstableParticles.size > 0):
-     *          idx = choose the next particle to fail (by which criterium?)
-     *          this->spatialParticleFailure(idx)
-     * }
-     *
-     *
-     *
-    */
 
     /**
      * @brief Take `n` event driven steps.
@@ -561,8 +542,6 @@ protected:
     bool m_fixed_stress; ///< Flag indicating whether the stress is fixed.
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
-    //TODO add set of unstable particle indexes
-
 };
 
 } // namespace GooseEPM
