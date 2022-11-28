@@ -417,12 +417,8 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = detail::argmax(m_sig < -m_sigy || m_sig > m_sigy);
-        double x = m_sigy.flat(idx) - m_sig.flat(idx);
-
-        if (m_sig.flat(idx) < 0) {
-            x = -x;
-        }
+        size_t idx = detail::argmax(xt::abs(m_sig) - m_sigy);
+        double x = std::abs(m_sig.flat(idx)) - m_sigy.flat(idx);
 
         if (x < 0) {
             m_t += 1.0;
