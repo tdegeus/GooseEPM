@@ -508,7 +508,6 @@ public:
         return max_steps;
     }
 
-
     /**
      * @brief Take `n` event driven steps.
      * @param n Number of steps to take.
