@@ -282,7 +282,9 @@ public:
 
     /**
      * @brief Set the stress.
-     * If a fixed stress protocol is used the fixed stress is set to `mean(sigma)`.
+     * If a fixed stress protocol is used, the fixed stress is set to `mean(sigma)`.
+     * You can use SystemAthermal::set_sigmabar() to set the fixed stress manually.
+     *
      * @param sigma Stress.
      */
     void set_sigma(const array_type::tensor<double, 2>& sigma)
@@ -381,27 +383,30 @@ public:
     }
 
     /**
-     * @brief Make `n` makeFailureStep() calls.
+     * @brief Make `n` makeAthermalFailureStep() calls.
      * @param n Number of steps to make.
      */
-    void makeFailureSteps(size_t n)
+    void makeAthermalFailureSteps(size_t n)
     {
         for (size_t i = 0; i < n; ++i) {
-            makeFailureStep();
+            makeAthermalFailureStep();
         }
     }
 
     /**
-     * @brief Failure step.
+     * @brief Fail an unstable block, chosen randomly.
      * @return Index of the failing particle (flat index).
      */
-    size_t makeFailureStep()
+    size_t makeAthermalFailureStep()
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
+
         m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
+
         size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
+
         this->spatialParticleFailure(idx);
         return idx;
     }
@@ -412,8 +417,12 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = detail::argmin(m_sigy - m_sig);
+        size_t idx = detail::argmin(m_sig < -m_sigy || m_sig > m_sigy);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
+
+        if (m_sig.flat(idx) < 0) {
+            x = -x;
+        }
 
         if (x < 0) {
             m_t += 1.0;
@@ -430,7 +439,9 @@ public:
      * @brief Fail a block.
      *
      * -    Change the stress in the block.
+     * -    Stabilise the blocks.
      * -    Apply the propagator to change the stress in all 'surrounding' blocks.
+     * -    Check if there are any new unstable blocks.
      *
      * @param idx Flat index of the block to fail.
      */
@@ -453,7 +464,7 @@ public:
                     continue;
                 }
                 m_sig(i, j) +=
-                    m_propagator(m_drow.periodic(i - i0), m_drow.periodic(j - j0)) * dsig;
+                    m_propagator(m_drow.periodic(i - i0), m_dcol.periodic(j - j0)) * dsig;
             }
         }
 
@@ -465,22 +476,26 @@ public:
     }
 
     /**
-     * @brief Take imposed shear step according the the event-driving protocol.
+     * @brief Change the imposed shear such that the next block fails.
      */
     void shiftImposedShear()
     {
-        double dsig = detail::amin(m_sigy - m_sig);
+        double dsig = detail::amin(m_sigy - m_sig) + 2.0 * std::numeric_limits<double>::epsilon();
         m_sig += dsig;
         m_sigbar += dsig;
     }
 
     /**
-     * @brief Take event driven step.
+     * @brief Take event driven step; shift the applied shear (by changing the stress) such that
+     * the weakest particle fails, then relax the system until there are no more unstable blocks.
      */
     void eventDrivenStep()
     {
         this->shiftImposedShear();
-        this->makeWeakestFailureStep();
+
+        while (xt::any(m_sig < -m_sigy || m_sig > m_sigy)) {
+            this->makeWeakestFailureStep();
+        }
     }
 
     /**

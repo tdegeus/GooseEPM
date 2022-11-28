@@ -120,16 +120,20 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("sigma_std"));
 
         cls.def(
-            "makeFailureSteps",
-            &M::SystemAthermal::makeFailureSteps,
+            "makeAthermalFailureSteps",
+            &M::SystemAthermal::makeAthermalFailureSteps,
             "Make `n` failure steps",
             py::arg("n"));
 
         cls.def(
-            "makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+            "makeAthermalFailureSteps",
+            &M::SystemAthermal::makeAthermalFailureSteps,
+            "Make an normal failure step");
 
         cls.def(
-            "makeFailureStep", &M::SystemAthermal::makeFailureStep, "Make an normal failure step");
+            "makeWeakestFailureStep",
+            &M::SystemAthermal::makeWeakestFailureStep,
+            "Fail the weakest block");
 
         cls.def(
             "shiftImposedShear", &M::SystemAthermal::shiftImposedShear, "Increment imposed shear");
