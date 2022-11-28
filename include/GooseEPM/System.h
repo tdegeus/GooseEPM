@@ -197,7 +197,6 @@ public:
         else {
             m_sig = sigmabar * xt::ones<double>(propagator.shape());
         }
-
     }
 
     /**
@@ -265,7 +264,6 @@ public:
 
     /**
      * @brief Set the yield stress.
-     * @note This function overrides the list of unstable blocks to currently unstable blocks.
      * @param sigmay Yield stress.
      */
     void set_sigmay(const array_type::tensor<double, 2>& sigmay)
@@ -287,8 +285,6 @@ public:
      * If a fixed stress protocol is used, the fixed stress is set to `mean(sigma)`.
      * You can use SystemAthermal::set_sigmabar() to set the fixed stress manually.
      *
-     * @note This function overrides the list of unstable blocks to currently unstable blocks.
-     *
      * @param sigma Stress.
      */
     void set_sigma(const array_type::tensor<double, 2>& sigma)
@@ -308,7 +304,6 @@ public:
 
     /**
      * @brief Set the imposed stress.
-     *
      * @param sigmabar Imposed stress.
      */
     void set_sigmabar(double sigmabar)
@@ -404,7 +399,7 @@ public:
      */
     size_t makeAthermalFailureStep()
     {
-        auto failing = xt::argwhere(xt::where(m_sig >= 0.0, m_sig > m_sigy, m_sig < m_sigy));
+        auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
 
         m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
@@ -422,7 +417,7 @@ public:
      */
     size_t makeWeakestFailureStep()
     {
-        size_t idx = detail::argmin(xt::where(m_sig > 0, m_sigy - m_sig, m_sig - m_sigy));
+        size_t idx = detail::argmin(m_sig < -m_sigy || m_sig > m_sigy);
         double x = m_sigy.flat(idx) - m_sig.flat(idx);
 
         if (m_sig.flat(idx) < 0) {
@@ -498,7 +493,7 @@ public:
     {
         this->shiftImposedShear();
 
-        while (xt::any(xt::where(m_sig >= 0.0, m_sig > m_sigy, m_sig < m_sigy))) {
+        while (xt::any(m_sig < -m_sigy || m_sig > m_sigy) {
             this->makeWeakestFailureStep();
         }
     }
