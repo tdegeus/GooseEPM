@@ -488,25 +488,39 @@ public:
     /**
      * @brief Take event driven step; shift the applied shear (by changing the stress) such that
      * the weakest particle fails, then relax the system until there are no more unstable blocks.
+     *
+     * @param max_steps Maximum number of iterations to allow.
+     * @return `0` if relaxation is successful, `1` if relaxation fails.
      */
-    void eventDrivenStep()
+    int eventDrivenStep(size_t max_steps = 1000000)
     {
         this->shiftImposedShear();
 
-        while (xt::any(m_sig < -m_sigy || m_sig > m_sigy)) {
+        for (size_t i = 0; i < max_steps; ++i) {
+            if (xt::all(m_sig < -m_sigy || m_sig > m_sigy)) {
+                return 0;
+            }
             this->makeWeakestFailureStep();
         }
+
+        return 1;
     }
 
     /**
      * @brief Take `n` event driven steps.
      * @param n Number of steps to take.
+     * @param max_steps Maximum number of iterations to allow.
+     * @return Actual number of steps taken (underlying function stops at `max_steps`).
      */
-    void eventDrivenSteps(size_t n)
+    size_t eventDrivenSteps(size_t n, size_t max_steps = 1000000)
     {
         for (size_t i = 0; i < n; ++i) {
-            this->eventDrivenStep();
+            if (this->eventDrivenStep(max_steps)) {
+                return i;
+            }
         }
+
+        return n;
     }
 
 protected:

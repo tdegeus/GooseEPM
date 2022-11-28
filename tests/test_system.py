@@ -31,7 +31,7 @@ class Test_detail(unittest.TestCase):
 
         self.assertAlmostEqual(system.sigmabar, np.mean(system.sigma))
 
-        system.eventDrivenSteps(100)
+        system.eventDrivenSteps(100, max_steps=10)
 
 
 if __name__ == "__main__":
