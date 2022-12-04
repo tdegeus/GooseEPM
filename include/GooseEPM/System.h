@@ -165,7 +165,7 @@ inline T create_distance_lookup(const T& distance)
  */
 class SystemAthermal {
 
-public:
+protected:
     /**
      * @param propagator The propagator `[M, N]`.
      * @param distances_rows The distance that each row of the propagator corresponds to `[M]`.
@@ -173,14 +173,14 @@ public:
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
      * @param sigmay_std Standard deviation of the yield stress for every block `[M, N]`.
      * @param seed Seed of the random number generator.
-     * @param failure_rate Failure rate (irrelevant if event-driving protocol is used).
+     * @param failure_rate Failure rate (irrelevant if event-driven protocol is used).
      * @param alpha Exponent characterising the shape of the potential.
      * @param sigmabar Mean stress to initialise the system.
      * @param fixed_stress If `true` the stress is kept constant.
      * @param init_random_stress If `true` a random compatible stress is initialised.
      * @param init_relax Relax the system initially.
      */
-    SystemAthermal(
+    void initSystemAthermal(
         const array_type::tensor<double, 2>& propagator,
         const array_type::tensor<ptrdiff_t, 1>& distances_rows,
         const array_type::tensor<ptrdiff_t, 1>& distances_cols,
@@ -241,6 +241,41 @@ public:
         if (init_relax) {
             this->relaxPreparation();
         }
+    }
+
+public:
+    SystemAthermal() = default;
+
+    /**
+     * @copydoc SystemAthermal::initSystemAthermal
+     */
+    SystemAthermal(
+        const array_type::tensor<double, 2>& propagator,
+        const array_type::tensor<ptrdiff_t, 1>& distances_rows,
+        const array_type::tensor<ptrdiff_t, 1>& distances_cols,
+        const array_type::tensor<double, 2>& sigmay_mean,
+        const array_type::tensor<double, 2>& sigmay_std,
+        uint64_t seed,
+        double failure_rate = 1,
+        double alpha = 1.5,
+        double sigmabar = 0,
+        bool fixed_stress = false,
+        bool init_random_stress = true,
+        bool init_relax = true)
+    {
+        this->initSystemAthermal(
+            propagator,
+            distances_rows,
+            distances_cols,
+            sigmay_mean,
+            sigmay_std,
+            seed,
+            failure_rate,
+            alpha,
+            sigmabar,
+            fixed_stress,
+            init_random_stress,
+            init_relax);
     }
 
     /**
@@ -641,6 +676,116 @@ protected:
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
     double m_propagator_origin; ///< Value of the propagator at the origin.
+};
+
+/**
+ * @brief Thermal system.
+ */
+class SystemThermal : public SystemAthermal {
+public:
+    SystemThermal() = default;
+
+    /**
+     * @copydoc SystemAthermal::initSystemAthermal
+     * @param temperature Temperature.
+     */
+    SystemThermal(
+        const array_type::tensor<double, 2>& propagator,
+        const array_type::tensor<ptrdiff_t, 1>& distances_rows,
+        const array_type::tensor<ptrdiff_t, 1>& distances_cols,
+        const array_type::tensor<double, 2>& sigmay_mean,
+        const array_type::tensor<double, 2>& sigmay_std,
+        uint64_t seed,
+        double temperature,
+        double failure_rate = 1,
+        double alpha = 1.5,
+        double sigmabar = 0,
+        bool fixed_stress = false,
+        bool init_random_stress = true,
+        bool init_relax = true)
+    {
+        this->initSystemAthermal(
+            propagator,
+            distances_rows,
+            distances_cols,
+            sigmay_mean,
+            sigmay_std,
+            seed,
+            failure_rate,
+            alpha,
+            sigmabar,
+            fixed_stress,
+            init_random_stress,
+            init_relax);
+
+        m_temperature = temperature;
+    }
+
+    /**
+     * @brief Get the applied temperature.
+     */
+    double temperature() const
+    {
+        return m_temperature;
+    }
+
+    /**
+     * @brief Set the applied temperature.
+     */
+    void set_temperature(double temperature)
+    {
+        m_temperature = temperature;
+    }
+
+    /**
+     * @brief Make a thermal failure step.
+     *
+     *      -   Unstable blocks are failed at a rate `failure_rate`.
+     *      -   Stable blocks are failed a rate proportional to their energy barrier.
+     */
+    void makeThermalFailureStep()
+    {
+        double dt;
+        double min_dt = std::numeric_limits<double>::max();
+        double inv_failure_rate = 1.0 / m_failure_rate;
+        double inv_temp = 1.0 / m_temperature;
+        size_t idx;
+
+        for (size_t i = 0; i < m_sig.size(); ++i) {
+
+            if (std::abs(m_sig.flat(i)) > m_sigy.flat(i)) {
+                dt = m_gen.exponential(std::array<size_t, 1>{1}, inv_failure_rate)(0);
+            }
+            else {
+                dt = m_gen.exponential(
+                    std::array<size_t, 1>{1},
+                    std::exp(
+                        std::pow(std::abs(m_sigy.flat(i) - m_sig.flat(i)), m_alpha) * inv_temp) *
+                        inv_failure_rate)(0);
+            }
+            if (dt < min_dt) {
+                min_dt = dt;
+                idx = i;
+            }
+        }
+
+        m_t += min_dt;
+        this->spatialParticleFailure(idx);
+    }
+
+    /**
+     * @brief Make `n` steps with SystemThermal::makeThermalFailureStep.
+     * @param n Number of steps to take.
+     */
+    void makeThermalFailureSteps(size_t n)
+    {
+        for (size_t i = 0; i < n; ++i) {
+            this->makeThermalFailureStep();
+        }
+    }
+
+protected:
+    double m_temperature; ///< Temperature.
 };
 
 } // namespace GooseEPM
