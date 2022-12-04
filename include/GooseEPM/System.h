@@ -239,7 +239,7 @@ public:
         }
 
         if (init_relax) {
-            this->relax();
+            this->relaxPreparation();
         }
     }
 
@@ -576,6 +576,32 @@ public:
             throw std::runtime_error("Failed to converge.");
         }
 
+        return max_steps;
+    }
+
+    /**
+     * @brief Relax the system by failing one unstable block chosen at random.
+     * @param max_steps Maximum number of iterations to allow.
+     * @param max_steps_is_error Throw `std::runtime_error` if `max_steps` is reached.
+     * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
+     */
+    size_t relaxPreparation(size_t max_steps = 1000000, bool max_steps_is_error = true)
+    {
+        double t = m_t;
+
+        for (size_t i = 0; i < max_steps; ++i) {
+            if (xt::all(m_sig >= -m_sigy && m_sig <= m_sigy)) {
+                m_t = t;
+                return i;
+            }
+            this->makeAthermalFailureStep();
+        }
+
+        if (max_steps_is_error) {
+            throw std::runtime_error("Failed to converge.");
+        }
+
+        m_t = t;
         return max_steps;
     }
 
