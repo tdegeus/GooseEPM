@@ -151,6 +151,13 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("max_steps_is_error") = true);
 
         cls.def(
+            "relaxPreparation",
+            &M::SystemAthermal::relaxPreparation,
+            "Event-driven step",
+            py::arg("max_steps") = 1000000,
+            py::arg("max_steps_is_error") = true);
+
+        cls.def(
             "eventDrivenStep",
             &M::SystemAthermal::eventDrivenStep,
             "Event-driven step",
