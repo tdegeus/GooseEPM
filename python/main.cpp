@@ -182,6 +182,59 @@ PYBIND11_MODULE(_GooseEPM, mod)
     }
 
     {
+        py::class_<M::SystemThermal, M::SystemAthermal> cls(mod, "SystemThermal");
+
+        cls.def(
+            py::init<
+                const M::array_type::tensor<double, 2>&,
+                const M::array_type::tensor<ptrdiff_t, 1>&,
+                const M::array_type::tensor<ptrdiff_t, 1>&,
+                const M::array_type::tensor<double, 2>&,
+                const M::array_type::tensor<double, 2>&,
+                uint64_t,
+                double,
+                double,
+                double,
+                double,
+                bool,
+                bool,
+                bool>(),
+            "System",
+            py::arg("propagator"),
+            py::arg("distances_rows"),
+            py::arg("distances_cols"),
+            py::arg("sigmay_mean"),
+            py::arg("sigmay_std"),
+            py::arg("seed"),
+            py::arg("temperature"),
+            py::arg("failure_rate") = 1,
+            py::arg("alpha") = 1.5,
+            py::arg("sigmabar") = 0,
+            py::arg("fixed_stress") = false,
+            py::arg("init_random_stress") = true,
+            py::arg("init_relax") = true);
+
+        cls.def_property(
+            "temperature",
+            &M::SystemThermal::temperature,
+            &M::SystemThermal::set_temperature,
+            "Applied temperature");
+
+        cls.def(
+            "makeThermalFailureStep",
+            &M::SystemThermal::makeThermalFailureStep,
+            "Make a thermal failure step");
+
+        cls.def(
+            "makeThermalFailureSteps",
+            &M::SystemThermal::makeThermalFailureSteps,
+            "Make `n` failure steps",
+            py::arg("n"));
+
+        cls.def("__repr__", [](const M::SystemThermal&) { return "<GooseEPM.SystemThermal>"; });
+    }
+
+    {
         py::module submod = mod.def_submodule("detail", "detail");
         namespace SM = GooseEPM::detail;
 
