@@ -50,6 +50,39 @@ inline typename T::value_type amax(const T& a)
 }
 
 /**
+ * @brief Check that a distance vector is of the following form:
+ *
+ *      distance = [-3, -2, -1,  0,  1,  2,  3]
+ *
+ * @param distance List with distances according to which an axis of the propagator is orders.
+ */
+template <class T>
+inline bool check_distances(const T& distance)
+{
+    using value_type = typename T::value_type;
+    static_assert(std::numeric_limits<value_type>::is_integer, "Distances must be integer");
+    static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
+
+    if (distance.dimension() != 1) {
+        return false;
+    }
+
+    value_type lower = detail::amin(distance);
+    value_type upper = detail::amax(distance) + 1;
+    auto d = xt::arange<value_type>(lower, upper);
+
+    if (!xt::all(xt::in1d(distance, d))) {
+        return false;
+    }
+
+    if (distance.size() != upper - lower) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Create a distance lookup as follows:
  *
  *      [0, 1, 2, ..., N - 2, N - 1, -N + 1, -N + 2, ... -3, -2, -1]
@@ -76,15 +109,10 @@ template <class T>
 inline T create_distance_lookup(const T& distance)
 {
     using value_type = typename T::value_type;
-    static_assert(std::numeric_limits<value_type>::is_integer, "Distances must be integer");
-    static_assert(std::numeric_limits<value_type>::is_signed, "Distances must be signed");
-    GOOSEEPM_REQUIRE(distance.dimension() == 1, std::invalid_argument);
+    GOOSEEPM_REQUIRE(detail::check_distances(distance), std::out_of_range);
 
     value_type lower = detail::amin(distance);
     value_type upper = detail::amax(distance) + 1;
-    auto d = xt::arange<value_type>(lower, upper);
-    GOOSEEPM_REQUIRE(xt::all(xt::in1d(distance, d)), std::invalid_argument);
-    GOOSEEPM_REQUIRE(distance.size() == upper - lower, std::invalid_argument);
 
     value_type N = static_cast<value_type>(distance.size());
     T ret = xt::empty<value_type>({2 * N - 1});
@@ -150,6 +178,7 @@ public:
      * @param sigmabar Mean stress to initialise the system.
      * @param fixed_stress If `true` the stress is kept constant.
      * @param init_random_stress If `true` a random compatible stress is initialised.
+     * @param init_relax Relax the system initially.
      */
     SystemAthermal(
         const array_type::tensor<double, 2>& propagator,
@@ -162,27 +191,37 @@ public:
         double alpha = 1.5,
         double sigmabar = 0,
         bool fixed_stress = false,
-        bool init_random_stress = true)
+        bool init_random_stress = true,
+        bool init_relax = true)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
         GOOSEEPM_REQUIRE(distances_rows.size() == propagator.shape(0), std::out_of_range);
         GOOSEEPM_REQUIRE(distances_cols.size() == propagator.shape(1), std::out_of_range);
-        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, propagator.shape()), std::out_of_range);
-        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_std, propagator.shape()), std::out_of_range);
+        GOOSEEPM_REQUIRE(detail::check_distances(distances_rows), std::out_of_range);
+        GOOSEEPM_REQUIRE(detail::check_distances(distances_cols), std::out_of_range);
+        GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, sigmay_std.shape()), std::out_of_range);
+
+        auto i = xt::flatten_indices(xt::argwhere(xt::equal(distances_rows, 0)));
+        auto j = xt::flatten_indices(xt::argwhere(xt::equal(distances_rows, 0)));
+        GOOSEEPM_REQUIRE(i.size() == 1, std::out_of_range);
+        GOOSEEPM_REQUIRE(j.size() == 1, std::out_of_range);
+        m_propagator_origin = propagator(i(0), j(0));
 
         m_t = 0;
         m_failure_rate = failure_rate;
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
-        m_propagator = propagator;
-        m_drow = detail::create_distance_lookup(distances_rows);
-        m_dcol = detail::create_distance_lookup(distances_cols);
         m_gen = prrng::pcg32(seed);
-        m_epsp = xt::zeros<double>(propagator.shape());
-        m_sigy = xt::empty<double>(propagator.shape());
+
+        m_propagator = propagator;
+        m_drow = distances_rows;
+        m_dcol = distances_cols;
+
+        auto shape = sigmay_mean.shape();
+        m_epsp = xt::zeros<double>(shape);
+        m_sigy = xt::empty<double>(shape);
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
-        m_sigbar = sigmabar;
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
             m_sigy.flat(i) =
@@ -190,12 +229,17 @@ public:
         }
 
         if (init_random_stress) {
-            m_sig = xt::empty<double>(propagator.shape());
+            m_sig = xt::empty<double>(shape);
             this->initSigmaPropogator(0.1);
             this->set_sigmabar(sigmabar);
         }
         else {
-            m_sig = sigmabar * xt::ones<double>(propagator.shape());
+            m_sig = sigmabar * xt::ones<double>(shape);
+            m_sigbar = sigmabar;
+        }
+
+        if (init_relax) {
+            this->relax();
         }
     }
 
@@ -282,8 +326,10 @@ public:
 
     /**
      * @brief Set the stress.
-     * If a fixed stress protocol is used, the fixed stress is set to `mean(sigma)`.
-     * You can use SystemAthermal::set_sigmabar() to set the fixed stress manually.
+     *
+     * @note
+     *      If a fixed stress protocol is used, the fixed stress is set to `mean(sigma)`.
+     *      See SystemAthermal::set_sigmabar() to change the average (applied) stress.
      *
      * @param sigma Stress.
      */
@@ -303,7 +349,12 @@ public:
     }
 
     /**
-     * @brief Set the imposed stress.
+     * @brief Adjust the average stress.
+     *
+     * @note
+     *      If the fixed stress protocol is used,
+     *      the average stress is fixed to the here specified value.
+     *
      * @param sigmabar Imposed stress.
      */
     void set_sigmabar(double sigmabar)
@@ -318,7 +369,12 @@ public:
      */
     double sigmabar() const
     {
-        return m_sigbar;
+        if (m_fixed_stress) {
+            return m_sigbar;
+        }
+        else {
+            return detail::mean(m_sig);
+        }
     }
 
     /**
@@ -367,19 +423,17 @@ public:
 
                 double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
 
-                for (ptrdiff_t k = 0; k < m_sig.shape(0); ++k) {
-                    for (ptrdiff_t l = 0; l < m_sig.shape(1); ++l) {
-                        if (i == k && j == l) {
-                            m_sig(k, l) += dsig;
-                        }
-                        else {
-                            m_sig(k, l) +=
-                                m_propagator(m_drow.periodic(i - k), m_dcol.periodic(j - l)) * dsig;
-                        }
+                for (size_t k = 0; k < m_propagator.shape(0); ++k) {
+                    for (size_t l = 0; l < m_propagator.shape(1); ++l) {
+                        ptrdiff_t di = m_drow(k);
+                        ptrdiff_t dj = m_dcol(l);
+                        m_sig.periodic(i + di, j + dj) -= dsig * m_propagator(k, l);
                     }
                 }
             }
         }
+
+        m_sig /= xt::sqrt(xt::sum(xt::pow(m_propagator, 2.0)));
     }
 
     /**
@@ -445,8 +499,7 @@ public:
     {
         double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
-        m_sig.flat(idx) -= dsig;
-        m_epsp.flat(idx) += dsig;
+        m_epsp.flat(idx) += dsig * m_propagator_origin;
         m_sigy.flat(idx) =
             m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))(0);
 
@@ -454,31 +507,39 @@ public:
         ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
         ptrdiff_t j0 = static_cast<ptrdiff_t>(index[1]);
 
-        for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
-            for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-                if (i == i0 && j == j0) {
-                    continue;
-                }
-                m_sig(i, j) +=
-                    m_propagator(m_drow.periodic(i - i0), m_dcol.periodic(j - j0)) * dsig;
+        for (size_t i = 0; i < m_propagator.shape(0); ++i) {
+            for (size_t j = 0; j < m_propagator.shape(1); ++j) {
+                ptrdiff_t di = m_drow(i);
+                ptrdiff_t dj = m_dcol(j);
+                m_sig.periodic(i0 + di, j0 + dj) += m_propagator(i, j) * dsig;
             }
         }
 
         if (!m_fixed_stress) {
-            m_sigbar -= dsig / static_cast<double>(m_sig.size());
+            m_sig -= dsig / static_cast<double>(m_sig.size());
         }
-
-        m_sig -= detail::mean(m_sig) - m_sigbar;
+        else {
+            m_sig -= detail::mean(m_sig) - m_sigbar;
+        }
     }
 
     /**
-     * @brief Change the imposed shear such that the next block fails.
+     * @brief Change the imposed shear such that one block fails in the direction of shear.
+     * @warning If you call this from a system that is not relaxed, the system will unload.
+     * @param direction Select positive (+1) or negative (-1) direction.
      */
-    void shiftImposedShear()
+    void shiftImposedShear(int direction = 1)
     {
-        double dsig = detail::amin(m_sigy - m_sig) + 2.0 * std::numeric_limits<double>::epsilon();
+        double dsig;
+
+        if (direction > 0) {
+            dsig = detail::amin(m_sigy - m_sig) + 2.0 * std::numeric_limits<double>::epsilon();
+        }
+        else {
+            dsig = -detail::amin(m_sig + m_sigy) + 2.0 * std::numeric_limits<double>::epsilon();
+        }
+
         m_sig += dsig;
-        m_sigbar += dsig;
     }
 
     /**
@@ -492,7 +553,18 @@ public:
     size_t eventDrivenStep(size_t max_steps = 1000000, bool max_steps_is_error = true)
     {
         this->shiftImposedShear();
+        return this->relax(max_steps, max_steps_is_error);
+    }
 
+    /**
+     * @brief Relax the system by calling makeWeakestFailureStep() until there are no more unstable
+     * blocks.
+     * @param max_steps Maximum number of iterations to allow.
+     * @param max_steps_is_error Throw `std::runtime_error` if `max_steps` is reached.
+     * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
+     */
+    size_t relax(size_t max_steps = 1000000, bool max_steps_is_error = true)
+    {
         for (size_t i = 0; i < max_steps; ++i) {
             if (xt::all(m_sig >= -m_sigy && m_sig <= m_sigy)) {
                 return i;
@@ -540,6 +612,7 @@ protected:
     bool m_fixed_stress; ///< Flag indicating whether the stress is fixed.
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
+    double m_propagator_origin; ///< Value of the propagator at the origin.
 };
 
 } // namespace GooseEPM

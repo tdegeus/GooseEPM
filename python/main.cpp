@@ -67,6 +67,7 @@ PYBIND11_MODULE(_GooseEPM, mod)
                 double,
                 double,
                 bool,
+                bool,
                 bool>(),
             "System",
             py::arg("propagator"),
@@ -79,7 +80,8 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("alpha") = 1.5,
             py::arg("sigmabar") = 0,
             py::arg("fixed_stress") = false,
-            py::arg("init_random_stress") = true);
+            py::arg("init_random_stress") = true,
+            py::arg("init_relax") = true);
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
@@ -136,7 +138,17 @@ PYBIND11_MODULE(_GooseEPM, mod)
             "Fail the weakest block");
 
         cls.def(
-            "shiftImposedShear", &M::SystemAthermal::shiftImposedShear, "Increment imposed shear");
+            "shiftImposedShear",
+            &M::SystemAthermal::shiftImposedShear,
+            "Increment imposed shear",
+            py::arg("direction") = 1);
+
+        cls.def(
+            "relax",
+            &M::SystemAthermal::relax,
+            "Event-driven step",
+            py::arg("max_steps") = 1000000,
+            py::arg("max_steps_is_error") = true);
 
         cls.def(
             "eventDrivenStep",
