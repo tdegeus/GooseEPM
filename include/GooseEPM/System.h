@@ -449,12 +449,17 @@ public:
 
     /**
      * @brief Fail an unstable block, chosen randomly.
+     * @note If no block is unstable, nothing happens, and `-1` is returned.
      * @return Index of the failing particle (flat index).
      */
-    size_t makeAthermalFailureStep()
+    ptrdiff_t makeAthermalFailureStep()
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
+
+        if (nfailing == 0) {
+            return -1;
+        }
 
         m_t += m_gen.exponential(std::array<size_t, 1>{1}, m_failure_rate * nfailing)(0);
 
@@ -462,11 +467,11 @@ public:
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
 
         this->spatialParticleFailure(idx);
-        return idx;
+        return static_cast<ptrdiff_t>(idx);
     }
 
     /**
-     * @brief Fail weakest particle.
+     * @brief Fail weakest particle (also when it was not unstable).
      * @return Index of the failing particle (flat index).
      */
     size_t makeWeakestFailureStep()
@@ -588,13 +593,14 @@ public:
     size_t relaxPreparation(size_t max_steps = 1000000, bool max_steps_is_error = true)
     {
         double t = m_t;
+        ptrdiff_t idx = 0;
 
         for (size_t i = 0; i < max_steps; ++i) {
-            if (xt::all(m_sig >= -m_sigy && m_sig <= m_sigy)) {
+            if (idx < 0) {
                 m_t = t;
                 return i;
             }
-            this->makeAthermalFailureStep();
+            idx = this->makeAthermalFailureStep();
         }
 
         if (max_steps_is_error) {
