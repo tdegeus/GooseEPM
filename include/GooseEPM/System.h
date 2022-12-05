@@ -504,7 +504,7 @@ public:
     {
         double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
 
-        m_epsp.flat(idx) += dsig * m_propagator_origin;
+        m_epsp.flat(idx) -= dsig * m_propagator_origin;
         m_sigy.flat(idx) =
             m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))(0);
 

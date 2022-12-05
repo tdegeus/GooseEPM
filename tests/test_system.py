@@ -67,9 +67,13 @@ class Test_SystemAthermal(unittest.TestCase):
 
         self.assertAlmostEqual(system.sigmabar, np.mean(system.sigma))
 
+        # holds only if "sigmay" is sufficiently high compare to "sigma" (true here though)
+        self.assertTrue(np.allclose(system.epsp, 0))
+
         system.shiftImposedShear(direction=1)
         system.relax()
 
+        self.assertTrue(np.all(system.epsp >= 0))
         self.assertTrue(np.all(np.abs(system.sigma) < system.sigmay))
 
 
