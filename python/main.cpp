@@ -85,10 +85,9 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         cls.def("__copy__", [](const M::SystemAthermal& self) { return M::SystemAthermal(self); });
 
-        cls.def(
-            "__deepcopy__",
-            [](const M::SystemAthermal& self, py::dict) { return M::SystemAthermal(self); },
-            "memo");
+        cls.def("__deepcopy__", [](const M::SystemAthermal& self, py::dict) {
+            return M::SystemAthermal(self);
+        });
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
@@ -213,6 +212,12 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("fixed_stress") = false,
             py::arg("init_random_stress") = true,
             py::arg("init_relax") = true);
+
+        cls.def("__copy__", [](const M::SystemThermal& self) { return M::SystemThermal(self); });
+
+        cls.def("__deepcopy__", [](const M::SystemThermal& self, py::dict) {
+            return M::SystemThermal(self);
+        });
 
         cls.def_property(
             "temperature",
