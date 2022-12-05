@@ -520,10 +520,7 @@ public:
             }
         }
 
-        if (!m_fixed_stress) {
-            m_sig -= dsig / static_cast<double>(m_sig.size());
-        }
-        else {
+        if (m_fixed_stress) {
             m_sig -= detail::mean(m_sig) - m_sigbar;
         }
     }
