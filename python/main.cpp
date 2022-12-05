@@ -83,6 +83,13 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("init_random_stress") = true,
             py::arg("init_relax") = true);
 
+        cls.def("__copy__", [](const M::SystemAthermal& self) { return M::SystemAthermal(self); });
+
+        cls.def(
+            "__deepcopy__",
+            [](const M::SystemAthermal& self, py::dict) { return M::SystemAthermal(self); },
+            "memo");
+
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
         cls.def_property("t", &M::SystemAthermal::t, &M::SystemAthermal::set_t, "Current time");
