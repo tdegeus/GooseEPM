@@ -501,7 +501,7 @@ public:
 
         size_t i = 0;
         if (nfailing > 1) {
-            size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
+            i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing))(0);
         }
 
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
