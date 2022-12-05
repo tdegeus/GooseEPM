@@ -152,7 +152,7 @@ class SystemAthermal {
 
 protected:
     /**
-     * @param propagator The propagator `[M, N]`.
+     * @param propagator The propagator `[M, N]`. Must follow the convention of Rossi et al. (2022).
      * @param distances_rows The distance that each row of the propagator corresponds to `[M]`.
      * @param distances_cols The distance that each column of the propagator corresponds to `[N]`.
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
@@ -180,6 +180,8 @@ protected:
         bool init_relax = true)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
+        GOOSEEPM_REQUIRE(propagator(0,0) == -1, std::out_of_range);
+        GOOSEEPM_REQUIRE(detail::mean(propagator) == -1/propagator.size(), std::out_of_range);
         GOOSEEPM_REQUIRE(distances_rows.size() == propagator.shape(0), std::out_of_range);
         GOOSEEPM_REQUIRE(distances_cols.size() == propagator.shape(1), std::out_of_range);
         GOOSEEPM_REQUIRE(detail::check_distances(distances_rows), std::out_of_range);
