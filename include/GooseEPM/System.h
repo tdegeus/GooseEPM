@@ -136,32 +136,17 @@ inline T create_distance_lookup(const T& distance)
 } // namespace detail
 
 /**
- * @brief Athermal system that can be driving in imposed stress or imposed strain, as follows.
+ * @brief Athermal system that can be driving in imposed stress or imposed strain.
  *
- *      -   Imposed strain: take (an) event driven step(s) using
- *          eventDrivenStep() or eventDrivenSteps()
+ * Note that by default the stress is chosen randomly and the system is relaxed to being stable.
+ * To do customisation you can (in Python code):
  *
- *      -   Imposed stress: take (a) failure step(s) using
- *          failureStep() or failureSteps()
+ *      system = SystemAthermal(..., init_random_stress=False, init_relax=False)
+ *      system.sigma = ...
+ *      ...
  *
- * Note that by default the stress is taken homogenous.
- * To use a random stress field use (in Python code):
- *
- *      system = SystemAthermal(..., init_random_stress=True)
- *
- * which is simply shorthand for:
- *
- *      system = SystemAthermal()
- *      system.initSigmaPropogator(0.1)
- *
- * Note that this can be a bit costly: it find a compatible stress field by applying the convolution
- * between a random field and the propagator.
- * Instead, you can use a pre-computed field (that you can much faster compute by computing the
- * convolution in Fourier space) by:
- *
- *      system = SystemAthermal(..., init_random_stress=False)
- *      system.stress = ...
- *      system.sigbar = ...
+ * Since initialisation can be a bit expensive, you can use the above to re-use the same initial
+ * stress distribution in multiple simulations.
  */
 class SystemAthermal {
 
@@ -173,7 +158,7 @@ protected:
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
      * @param sigmay_std Standard deviation of the yield stress for every block `[M, N]`.
      * @param seed Seed of the random number generator.
-     * @param failure_rate Failure rate (irrelevant if event-driven protocol is used).
+     * @param failure_rate Failure rate.
      * @param alpha Exponent characterising the shape of the potential.
      * @param sigmabar Mean stress to initialise the system.
      * @param fixed_stress If `true` the stress is kept constant.
@@ -207,7 +192,6 @@ protected:
         GOOSEEPM_REQUIRE(j.size() == 1, std::out_of_range);
         m_propagator_origin = propagator(i(0), j(0));
 
-        m_t = 0.0;
         m_failure_rate = failure_rate;
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
@@ -218,7 +202,6 @@ protected:
         m_dcol = distances_cols;
 
         auto shape = sigmay_mean.shape();
-        m_epsp = xt::zeros<double>(shape);
         m_sigy = xt::empty<double>(shape);
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
@@ -239,8 +222,11 @@ protected:
         }
 
         if (init_relax) {
-            this->relaxPreparation();
+            this->relaxAthermal();
         }
+
+        m_t = 0.0;
+        m_epsp = xt::zeros<double>(shape);
     }
 
 public:
@@ -472,18 +458,10 @@ public:
     }
 
     /**
-     * @brief Make `n` makeAthermalFailureStep() calls.
-     * @param n Number of steps to make.
-     */
-    void makeAthermalFailureSteps(size_t n)
-    {
-        for (size_t i = 0; i < n; ++i) {
-            makeAthermalFailureStep();
-        }
-    }
-
-    /**
-     * @brief Fail an unstable block, chosen randomly.
+     * @brief Fail an unstable block, chosen randomly from all unstable blocks.
+     * The time is advanced by \f$ \exp( 1 / f_0 n )\f$ with \f$ f_0 \f$ the failure rate
+     * (see constructor) and \f$ n \f$ the number of unstable blocks.
+     *
      * @note If no block is unstable, nothing happens, and `-1` is returned.
      * @return Index of the failing particle (flat index).
      */
@@ -491,7 +469,6 @@ public:
     {
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
-
 
         if (nfailing == 0) {
             return -1;
@@ -511,21 +488,21 @@ public:
     }
 
     /**
-     * @brief Fail weakest particle (also when it was not unstable).
+     * @brief Fail weakest block unstable and advance the time by one.
+     * If all blocks are stable
+     *
      * @return Index of the failing particle (flat index).
      */
-    size_t makeWeakestFailureStep()
+    ptrdiff_t makeWeakestFailureStep()
     {
         size_t idx = detail::argmax(xt::abs(m_sig) - m_sigy);
-        double x = std::abs(m_sig.flat(idx)) - m_sigy.flat(idx);
+        double x = m_sigy.flat(idx) - std::abs(m_sig.flat(idx));
 
-        if (x < 0) {
-            m_t += 1.0;
-        }
-        else {
-            m_t += std::exp(std::pow(200.0 * x, m_alpha)); // todo: why 200 x?
+        if (x > 0) {
+            return -1;
         }
 
+        m_t += 1.0;
         this->spatialParticleFailure(idx);
         return idx;
     }
@@ -585,84 +562,53 @@ public:
     }
 
     /**
-     * @brief Take event driven step; shift the applied shear (by changing the stress) such that
-     * the weakest particle fails, then relax the system until there are no more unstable blocks.
+     * @brief Relax the system by calling SystemAthermal::makeAthermalFailureStep()
+     * until there are no more unstable blocks.
      *
      * @param max_steps Maximum number of iterations to allow.
-     * @param max_steps_is_error Throw `std::runtime_error` if `max_steps` is reached.
+     * @param max_steps_is_error If `true`, throw `std::runtime_error` if `max_steps` is reached.
      * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
      */
-    size_t eventDrivenStep(size_t max_steps = 1000000, bool max_steps_is_error = true)
+    size_t relaxAthermal(size_t max_steps = 1000000, bool max_steps_is_error = true)
     {
-        this->shiftImposedShear();
-        return this->relax(max_steps, max_steps_is_error);
-    }
-
-    /**
-     * @brief Relax the system by calling makeWeakestFailureStep() until there are no more unstable
-     * blocks.
-     * @param max_steps Maximum number of iterations to allow.
-     * @param max_steps_is_error Throw `std::runtime_error` if `max_steps` is reached.
-     * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
-     */
-    size_t relax(size_t max_steps = 1000000, bool max_steps_is_error = true)
-    {
-        for (size_t i = 0; i < max_steps; ++i) {
-            if (xt::all(m_sig >= -m_sigy && m_sig <= m_sigy)) {
-                return i;
-            }
-            this->makeWeakestFailureStep();
-        }
-
-        if (max_steps_is_error) {
-            throw std::runtime_error("Failed to converge.");
-        }
-
-        return max_steps;
-    }
-
-    /**
-     * @brief Relax the system by failing one unstable block chosen at random.
-     * @param max_steps Maximum number of iterations to allow.
-     * @param max_steps_is_error Throw `std::runtime_error` if `max_steps` is reached.
-     * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
-     */
-    size_t relaxPreparation(size_t max_steps = 1000000, bool max_steps_is_error = true)
-    {
-        double t = m_t;
-        ptrdiff_t idx = 0;
 
         for (size_t i = 0; i < max_steps; ++i) {
+            auto idx = this->makeAthermalFailureStep();
             if (idx < 0) {
-                m_t = t;
                 return i;
             }
-            idx = this->makeAthermalFailureStep();
         }
 
         if (max_steps_is_error) {
             throw std::runtime_error("Failed to converge.");
         }
 
-        m_t = t;
         return max_steps;
     }
 
     /**
-     * @brief Take `n` event driven steps.
-     * @param n Number of steps to take.
+     * @brief Relax the system by calling SystemAthermal::makeWeakestFailureStep()
+     * until there are no more unstable blocks.
+     *
      * @param max_steps Maximum number of iterations to allow.
-     * @return Total number of iterations taken.
+     * @param max_steps_is_error If `true`, throw `std::runtime_error` if `max_steps` is reached.
+     * @return Number of iterations taken: `max_steps` corresponds to a failure to converge.
      */
-    size_t eventDrivenSteps(size_t n, size_t max_steps = 1000000)
+    size_t relaxWeakest(size_t max_steps = 1000000, bool max_steps_is_error = true)
     {
-        size_t iter = 0;
 
-        for (size_t i = 0; i < n; ++i) {
-            iter += this->eventDrivenStep(max_steps, true);
+        for (size_t i = 0; i < max_steps; ++i) {
+            auto idx = this->makeWeakestFailureStep();
+            if (idx < 0) {
+                return i;
+            }
         }
 
-        return iter;
+        if (max_steps_is_error) {
+            throw std::runtime_error("Failed to converge.");
+        }
+
+        return max_steps;
     }
 
 protected:

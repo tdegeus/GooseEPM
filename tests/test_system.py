@@ -15,7 +15,7 @@ class Test_SystemAthermal(unittest.TestCase):
 
     def test_shiftImposedShear(self):
         """
-        shiftImposedShear: positive shear
+        shiftImposedShear
         """
 
         propagator = np.array(
@@ -44,9 +44,9 @@ class Test_SystemAthermal(unittest.TestCase):
         system.shiftImposedShear(direction=-1)
         self.assertTrue(np.allclose(system.sigma, -1))
 
-    def test_relax(self):
+    def test_relaxAthermal(self):
         """
-        Try relaxation.
+        relaxAthermal
         """
 
         propagator = np.array(
@@ -72,14 +72,14 @@ class Test_SystemAthermal(unittest.TestCase):
         self.assertTrue(np.allclose(system.epsp, 0))
 
         system.shiftImposedShear(direction=1)
-        system.relax()
+        system.relaxAthermal()
 
         self.assertTrue(np.all(system.epsp >= 0))
         self.assertTrue(np.all(np.abs(system.sigma) < system.sigmay))
 
     def test_copy(self):
         """
-        Try copy.
+        copy
         """
 
         propagator = np.array(
@@ -107,7 +107,7 @@ class Test_SystemAthermal(unittest.TestCase):
         mycopy = copy.copy(system)
 
         system.shiftImposedShear(direction=1)
-        system.relax()
+        system.relaxAthermal()
 
         self.assertNotEqual(system.t, t)
         self.assertNotEqual(system.state, state)
@@ -120,7 +120,7 @@ class Test_SystemAthermal(unittest.TestCase):
         self.assertTrue(np.allclose(mycopy.epsp, epsp))
 
         mycopy.shiftImposedShear(direction=1)
-        mycopy.relax()
+        mycopy.relaxAthermal()
 
         self.assertEqual(mycopy.t, system.t)
         self.assertEqual(mycopy.state, system.state)

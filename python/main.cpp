@@ -128,14 +128,8 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("sigma_std"));
 
         cls.def(
-            "makeAthermalFailureSteps",
-            &M::SystemAthermal::makeAthermalFailureSteps,
-            "Make `n` failure steps",
-            py::arg("n"));
-
-        cls.def(
-            "makeAthermalFailureSteps",
-            &M::SystemAthermal::makeAthermalFailureSteps,
+            "makeAthermalFailureStep",
+            &M::SystemAthermal::makeAthermalFailureStep,
             "Make an normal failure step");
 
         cls.def(
@@ -144,38 +138,30 @@ PYBIND11_MODULE(_GooseEPM, mod)
             "Fail the weakest block");
 
         cls.def(
+            "spatialParticleFailure",
+            &M::SystemAthermal::spatialParticleFailure,
+            "Fail a block and apply the propagator",
+            py::arg("idx"));
+
+        cls.def(
             "shiftImposedShear",
             &M::SystemAthermal::shiftImposedShear,
             "Increment imposed shear",
             py::arg("direction") = 1);
 
         cls.def(
-            "relax",
-            &M::SystemAthermal::relax,
+            "relaxAthermal",
+            &M::SystemAthermal::relaxAthermal,
             "Event-driven step",
             py::arg("max_steps") = 1000000,
             py::arg("max_steps_is_error") = true);
 
         cls.def(
-            "relaxPreparation",
-            &M::SystemAthermal::relaxPreparation,
+            "relaxWeakest",
+            &M::SystemAthermal::relaxWeakest,
             "Event-driven step",
             py::arg("max_steps") = 1000000,
             py::arg("max_steps_is_error") = true);
-
-        cls.def(
-            "eventDrivenStep",
-            &M::SystemAthermal::eventDrivenStep,
-            "Event-driven step",
-            py::arg("max_steps") = 1000000,
-            py::arg("max_steps_is_error") = true);
-
-        cls.def(
-            "eventDrivenSteps",
-            &M::SystemAthermal::eventDrivenSteps,
-            "Run `n` event-driven steps",
-            py::arg("n"),
-            py::arg("max_steps") = 1000000);
 
         cls.def("__repr__", [](const M::SystemAthermal&) { return "<GooseEPM.SystemAthermal>"; });
     }
