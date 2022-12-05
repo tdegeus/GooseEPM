@@ -207,7 +207,7 @@ public:
         GOOSEEPM_REQUIRE(j.size() == 1, std::out_of_range);
         m_propagator_origin = propagator(i(0), j(0));
 
-        m_t = 0;
+        m_t = 0.0;
         m_failure_rate = failure_rate;
         m_alpha = alpha;
         m_fixed_stress = fixed_stress;
@@ -265,7 +265,7 @@ public:
      * @brief Get the time
      * @return Time.
      */
-    uint64_t t() const
+    double t() const
     {
         return m_t;
     }
