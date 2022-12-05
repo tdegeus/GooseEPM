@@ -492,12 +492,18 @@ public:
         auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
         size_t nfailing = failing.size();
 
+
         if (nfailing == 0) {
             return -1;
         }
 
         m_t += m_gen.exponential(std::array<size_t, 1>{1}, 1.0 / (m_failure_rate * nfailing))(0);
-        size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
+
+        size_t i = 0;
+        if (nfailing > 1) {
+            size_t i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing - 1))(0);
+        }
+
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
 
         this->spatialParticleFailure(idx);
