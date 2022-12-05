@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 from GooseEPM import SystemAthermal
+from GooseEPM import generate_propagator
 
 faulthandler.enable()
 
@@ -13,6 +14,11 @@ class Test_SystemAthermal(unittest.TestCase):
     GooseEPM.SystemAthermal
     """
 
+    def test_propagator(self):
+        propagator = generate_propagator(L = 100, method = 'rossi')
+        self.assertAlmostEqual(propagator[0,0], -1)
+        self.assertAlmostEqual(np.sum(propagator), -1)
+    
     def test_shiftImposedShear(self):
         """
         shiftImposedShear
