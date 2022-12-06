@@ -3,8 +3,8 @@ import faulthandler
 import unittest
 
 import numpy as np
-from GooseEPM import SystemAthermal
 from GooseEPM import elshelby_propagator
+from GooseEPM import SystemAthermal
 
 faulthandler.enable()
 
@@ -19,12 +19,12 @@ class Test_SystemAthermal(unittest.TestCase):
         elshelby_propagator (Python only)
         """
 
-        propagator, _, _ = elshelby_propagator(L = 100, imposed="strain")
-        self.assertAlmostEqual(propagator[0,0], -1)
+        propagator, _, _ = elshelby_propagator(L=100, imposed="strain")
+        self.assertAlmostEqual(propagator[0, 0], -1)
         self.assertAlmostEqual(np.sum(propagator), -1)
 
-        propagator, _, _ = elshelby_propagator(L = 100, imposed="stress")
-        self.assertAlmostEqual(propagator[0,0], -1)
+        propagator, _, _ = elshelby_propagator(L=100, imposed="stress")
+        self.assertAlmostEqual(propagator[0, 0], -1)
         self.assertAlmostEqual(np.sum(propagator), 0)
 
     def test_shiftImposedShear(self):
