@@ -1,9 +1,10 @@
+import numpy as np
+import scipy.fftpack as fft
+
 from ._GooseEPM import *  # noqa: F401, F403
 
-import scipy.fftpack as fft
-import numpy as np
 
-def elshelby_propagator(L: int, imposed = "strain") -> np.ndarray:
+def elshelby_propagator(L: int, imposed="strain") -> np.ndarray:
     """
     Generates a periodic Eshelby-like propagator.
     The convention that is followed is:
@@ -19,33 +20,33 @@ def elshelby_propagator(L: int, imposed = "strain") -> np.ndarray:
     :param imposed: ``"strain"`` or ``"stress"``.
     :return: ``(propagator, dx, dy)``
     """
-    qx = fft.fftfreq(L) * 2*np.pi
-    qx, qy = np.meshgrid(qx,qx)
+    qx = fft.fftfreq(L) * 2 * np.pi
+    qx, qy = np.meshgrid(qx, qx)
 
-    a = 2-2*np.cos(qx)
-    b = 2-2*np.cos(qy)
-    q = (a+b)**2
+    a = 2 - 2 * np.cos(qx)
+    b = 2 - 2 * np.cos(qy)
+    q = (a + b) ** 2
     q[:, 0] = 1
     q[0, :] = 1
 
-    G_t = -4*a*b / q
+    G_t = -4 * a * b / q
     G_t[:, 0] = 0
     G_t[0, :] = 0
 
     if imposed == "strain":
-        g = -1/(L**2 - 1) * (np.sum(G_t) - G_t[0,0])
+        g = -1 / (L**2 - 1) * (np.sum(G_t) - G_t[0, 0])
     elif imposed == "stress":
-        g = -1/(L**2) * (np.sum(G_t) - G_t[0,0])
+        g = -1 / (L**2) * (np.sum(G_t) - G_t[0, 0])
     else:
         raise ValueError("Unknown imposed quantity: " + str(imposed))
 
     G_t /= g
-    G_t[0,0] = -1
+    G_t[0, 0] = -1
 
     G = fft.ifft2(G_t).real
 
     dx = np.arange(L)
-    dx = np.where(dx > L/2, dx - L, dx)
+    dx = np.where(dx > L / 2, dx - L, dx)
 
     # fine-tuning: getting rid of rounding errors
     if imposed == "strain":
