@@ -434,19 +434,19 @@ public:
     {
         m_sig.fill(0);
         ptrdiff_t d = static_cast<ptrdiff_t>(delta_r);
+        auto dsig = m_gen.normal<decltype(m_sig)>(m_sig.shape(), 0, sigma_std);
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-                double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
-                m_sig(i, j) += dsig;
-                m_sig.periodic(i - d, j) -= 0.5 * dsig;
-                m_sig.periodic(i + d, j) -= 0.5 * dsig;
-                m_sig.periodic(i, j - d) -= 0.5 * dsig;
-                m_sig.periodic(i, j + d) -= 0.5 * dsig;
-                m_sig.periodic(i + d, j + d) += 0.25 * dsig;
-                m_sig.periodic(i - d, j + d) += 0.25 * dsig;
-                m_sig.periodic(i + d, j - d) += 0.25 * dsig;
-                m_sig.periodic(i - d, j - d) += 0.25 * dsig;
+                m_sig(i, j) += dsig(i, j);
+                m_sig.periodic(i - d, j) -= 0.5 * dsig(i, j);
+                m_sig.periodic(i + d, j) -= 0.5 * dsig(i, j);
+                m_sig.periodic(i, j - d) -= 0.5 * dsig(i, j);
+                m_sig.periodic(i, j + d) -= 0.5 * dsig(i, j);
+                m_sig.periodic(i + d, j + d) += 0.25 * dsig(i, j);
+                m_sig.periodic(i - d, j + d) += 0.25 * dsig(i, j);
+                m_sig.periodic(i + d, j - d) += 0.25 * dsig(i, j);
+                m_sig.periodic(i - d, j - d) += 0.25 * dsig(i, j);
             }
         }
         m_sig *= 0.5;
@@ -464,17 +464,15 @@ public:
     void initSigmaPropogator(double sigma_std)
     {
         m_sig.fill(0);
+        auto dsig = m_gen.normal<decltype(m_sig)>(m_sig.shape(), 0, sigma_std);
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-
-                double dsig = m_gen.normal(std::array<size_t, 1>{1}, 0, sigma_std)(0);
-
                 for (size_t k = 0; k < m_propagator.shape(0); ++k) {
                     for (size_t l = 0; l < m_propagator.shape(1); ++l) {
                         ptrdiff_t di = m_drow(k);
                         ptrdiff_t dj = m_dcol(l);
-                        m_sig.periodic(i + di, j + dj) -= dsig * m_propagator(k, l);
+                        m_sig.periodic(i + di, j + dj) -= dsig(i, j) * m_propagator(k, l);
                     }
                 }
             }
