@@ -491,18 +491,18 @@ public:
      */
     ptrdiff_t makeAthermalFailureStep()
     {
-        auto failing = xt::argwhere(m_sig < -m_sigy || m_sig > m_sigy);
+        auto failing = xt::argwhere(xt::abs(m_sig) >= m_sigy);
         size_t nfailing = failing.size();
 
         if (nfailing == 0) {
             return -1;
         }
 
-        m_t += m_gen.exponential(std::array<size_t, 1>{1}, 1.0 / (m_failure_rate * nfailing))(0);
+        m_t += m_gen.exponential(std::array<size_t, 1>{1})(0) / (m_failure_rate * nfailing);
 
         size_t i = 0;
         if (nfailing > 1) {
-            i = m_gen.randint(std::array<size_t, 1>{1}, static_cast<size_t>(nfailing))(0);
+            i = m_gen.randint(std::array<size_t, 1>{1}, nfailing)(0);
         }
 
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
@@ -721,10 +721,9 @@ public:
         auto scale = xt::where(
             xt::abs(m_sig) >= m_sig,
             inv_failure_rate,
-            xt::exp(xt::pow(xt::abs(m_sigy - m_sig), m_alpha) * inv_temp) * inv_failure_rate);
+            xt::exp(xt::pow(m_sigy - xt::abs(m_sig), m_alpha) * inv_temp) * inv_failure_rate);
 
         dt *= scale;
-
         idx = detail::argmin(dt);
         m_t += dt.flat(idx);
         this->spatialParticleFailure(idx);
