@@ -184,24 +184,27 @@ protected:
         GOOSEEPM_REQUIRE(detail::check_distances(distances_cols), std::out_of_range);
         GOOSEEPM_REQUIRE(xt::has_shape(sigmay_mean, sigmay_std.shape()), std::out_of_range);
 
-        auto i = xt::flatten_indices(xt::argwhere(xt::equal(distances_rows, 0)));
-        auto j = xt::flatten_indices(xt::argwhere(xt::equal(distances_rows, 0)));
+        auto i = xt::argwhere(xt::equal(distances_rows, 0));
+        auto j = xt::argwhere(xt::equal(distances_rows, 0));
         GOOSEEPM_REQUIRE(i.size() == 1, std::out_of_range);
         GOOSEEPM_REQUIRE(j.size() == 1, std::out_of_range);
-        m_propagator_origin = propagator(i(0), j(0));
+        m_propagator_origin = propagator(i[0][0], j[0][0]);
 
         m_failure_rate = failure_rate;
         m_alpha = alpha;
         m_gen = prrng::pcg32(seed);
 
-        m_propagator = propagator;
+        m_propagator = xt::empty_like(propagator);
+        std::copy(propagator.cbegin(), propagator.cend(), m_propagator.begin());
         m_drow = distances_rows;
         m_dcol = distances_cols;
 
-        auto shape = sigmay_mean.shape();
-        m_sigy = xt::empty<double>(shape);
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
+        m_sig = xt::ones_like(m_sigy_mu);
+        m_epsp = xt::zeros_like(m_sigy_mu);
+        m_sigy = xt::empty_like(m_sigy_mu);
+        m_sig *= sigmabar;
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
             m_sigy.flat(i) =
@@ -209,13 +212,8 @@ protected:
         }
 
         if (init_random_stress) {
-            m_sig = xt::empty<double>(shape);
             this->initSigmaPropogator(0.1);
             this->set_sigmabar(sigmabar);
-        }
-        else {
-            m_sig = sigmabar * xt::ones<double>(shape);
-            m_sigbar = sigmabar;
         }
 
         if (init_relax) {
@@ -223,7 +221,7 @@ protected:
         }
 
         m_t = 0.0;
-        m_epsp = xt::zeros<double>(shape);
+        m_epsp.fill(0.0);
     }
 
 public:
@@ -352,7 +350,6 @@ public:
     void set_sigma(const array_type::tensor<double, 2>& sigma)
     {
         m_sig = sigma;
-        m_sigbar = detail::mean(m_sig);
     }
 
     /**
@@ -375,8 +372,7 @@ public:
      */
     void set_sigmabar(double sigmabar)
     {
-        m_sigbar = sigmabar;
-        m_sig -= detail::mean(m_sig) - m_sigbar;
+        m_sig -= detail::mean(m_sig) - sigmabar;
     }
 
     /**
@@ -610,7 +606,6 @@ protected:
     double m_t; ///< Time.
     double m_failure_rate; ///< Failure rate.
     double m_alpha; ///< Exponent characterising the shape of the potential.
-    double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
     double m_propagator_origin; ///< Value of the propagator at the origin.
 };

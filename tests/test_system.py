@@ -27,6 +27,53 @@ class Test_SystemAthermal(unittest.TestCase):
         self.assertAlmostEqual(propagator[0, 0], -1)
         self.assertAlmostEqual(np.sum(propagator), 0)
 
+    def test_imposedStress(self):
+        """
+        Check that stress is preserved
+        """
+
+        L = 61
+        sigmabar = 0.5
+        system = SystemAthermal(
+            *elshelby_propagator(L=L, imposed="stress"),
+            sigmay_mean=np.ones([L, L]),
+            sigmay_std=np.zeros([L, L]),
+            seed=0,
+            sigmabar=sigmabar,
+            init_random_stress=True,
+            init_relax=True,
+        )
+        self.assertAlmostEqual(system.sigmabar, sigmabar)
+
+        sigmabar = 0.6
+        system.sigmabar = sigmabar
+        self.assertAlmostEqual(system.sigmabar, sigmabar)
+
+        system.relaxAthermal()
+        self.assertAlmostEqual(system.sigmabar, sigmabar)
+
+    def test_imposedStrain(self):
+        """
+        Check that stress is changed corectly
+        """
+
+        L = 61
+        system = SystemAthermal(
+            *elshelby_propagator(L=L, imposed="strain"),
+            sigmay_mean=np.ones([L, L]),
+            sigmay_std=np.zeros([L, L]),
+            seed=0,
+            init_random_stress=True,
+            init_relax=True,
+        )
+        system.shiftImposedShear(direction=1)
+        sigma = np.copy(system.sigma)
+        i = np.argwhere(system.sigma > system.sigmay).ravel()
+        idx = np.ravel_multi_index(i, system.sigma.shape)
+        system.spatialParticleFailure(idx)
+        dsig = sigma.flat[idx] - system.sigma.flat[idx]
+        self.assertAlmostEqual(system.sigmabar, np.mean(sigma) - dsig / sigma.size)
+
     def test_shiftImposedShear(self):
         """
         shiftImposedShear
