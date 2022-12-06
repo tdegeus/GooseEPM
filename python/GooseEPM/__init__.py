@@ -43,7 +43,7 @@ def elshelby_propagator(L: int, imposed="strain") -> np.ndarray:
     G_t /= g
     G_t[0, 0] = -1
 
-    G = fft.ifft2(G_t).real
+    G = np.copy(fft.ifft2(G_t).real)
 
     dx = np.arange(L)
     dx = np.where(dx > L / 2, dx - L, dx)

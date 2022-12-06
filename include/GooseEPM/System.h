@@ -194,8 +194,7 @@ protected:
         m_alpha = alpha;
         m_gen = prrng::pcg32(seed);
 
-        m_propagator = xt::empty_like(propagator);
-        std::copy(propagator.cbegin(), propagator.cend(), m_propagator.begin());
+        m_propagator = propagator;
         m_drow = distances_rows;
         m_dcol = distances_cols;
 
