@@ -713,31 +713,20 @@ public:
      */
     void makeThermalFailureStep()
     {
-        double dt;
-        double min_dt = std::numeric_limits<double>::max();
         double inv_failure_rate = 1.0 / m_failure_rate;
         double inv_temp = 1.0 / m_temperature;
         size_t idx;
 
-        for (size_t i = 0; i < m_sig.size(); ++i) {
+        auto dt = m_gen.exponential<decltype(m_sig)>(m_sig.shape());
+        auto scale = xt::where(
+            xt::abs(m_sig) >= m_sig,
+            inv_failure_rate,
+            xt::exp(xt::pow(xt::abs(m_sigy - m_sig), m_alpha) * inv_temp) * inv_failure_rate);
 
-            if (std::abs(m_sig.flat(i)) > m_sigy.flat(i)) {
-                dt = m_gen.exponential(std::array<size_t, 1>{1}, inv_failure_rate)(0);
-            }
-            else {
-                dt = m_gen.exponential(
-                    std::array<size_t, 1>{1},
-                    std::exp(
-                        std::pow(std::abs(m_sigy.flat(i) - m_sig.flat(i)), m_alpha) * inv_temp) *
-                        inv_failure_rate)(0);
-            }
-            if (dt < min_dt) {
-                min_dt = dt;
-                idx = i;
-            }
-        }
+        dt *= scale;
 
-        m_t += min_dt;
+        idx = detail::argmin(dt);
+        m_t += dt.flat(idx);
         this->spatialParticleFailure(idx);
     }
 
