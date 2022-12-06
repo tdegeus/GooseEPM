@@ -89,6 +89,12 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
+        cls.def(
+            "propogator_follows_conventions",
+            &M::SystemAthermal::propogator_follows_conventions,
+            "``True`` is the propagator follows internal conventions.",
+            py::arg("protocol"));
+
         cls.def_property("t", &M::SystemAthermal::t, &M::SystemAthermal::set_t, "Current time");
 
         cls.def_property(

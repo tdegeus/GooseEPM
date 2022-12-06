@@ -136,10 +136,28 @@ inline T create_distance_lookup(const T& distance)
 } // namespace detail
 
 /**
- * @brief Athermal system that can be driving in imposed stress or imposed strain.
+ * @brief Athermal system that can be driven in imposed stress or imposed strain.
  *
- * Note that by default the stress is chosen randomly and the system is relaxed to being stable.
- * To do customisation you can (in Python code):
+ * **Imposed stress**:
+ *
+ *  -   The propagator G_{ij} must follow \f$ \sum\limits_{ij} G_{ij} = 0 \f$ and
+ *      \f$ G(\Delta i = 0, \Delta j = 0) = -1 \f$.
+ *      See SystemAthermal::propogator_follows_conventions.
+ *
+ * **Imposed strain**:
+ *
+ *  -   The propagator G_{ij} must follow \f$ \sum\limits_{ij} G_{ij} = - 1 / N \f$, with \f$ N \f$
+ *      the size of the propagator, and \f$ G(\Delta i = 0, \Delta j = 0) = -1 \f$.
+ *      See SystemAthermal::propogator_follows_conventions.
+ *
+ *  -   Driving proceeds by imposing the strain, that changes the stress through elasticity.
+ *      To change the strain such that that the system just reaches the next yielding event,
+ *      use SystemAthermal::shiftImposedShear.
+ *
+ * **Initialization**:
+ *
+ * By default the stress is chosen randomly according to compatibility, and the system is relaxed to
+ * being stable. For customisation you can (in Python code):
  *
  *      system = SystemAthermal(..., init_random_stress=False, init_relax=False)
  *      system.sigma = ...
@@ -171,11 +189,11 @@ protected:
         const array_type::tensor<double, 2>& sigmay_mean,
         const array_type::tensor<double, 2>& sigmay_std,
         uint64_t seed,
-        double failure_rate = 1,
-        double alpha = 1.5,
-        double sigmabar = 0,
-        bool init_random_stress = true,
-        bool init_relax = true)
+        double failure_rate,
+        double alpha,
+        double sigmabar,
+        bool init_random_stress,
+        bool init_relax)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
         GOOSEEPM_REQUIRE(distances_rows.size() == propagator.shape(0), std::out_of_range);
@@ -254,6 +272,29 @@ public:
             sigmabar,
             init_random_stress,
             init_relax);
+    }
+
+    /**
+     * @brief Check if the propagator is consistent with the conventions of this class
+     * (see discussion in SystemAthermal).
+     *
+     * @param protocol Select imposed `"stress"` or `"strain"`.
+     */
+    bool propogator_follows_conventions(const std::string& protocol) const
+    {
+        if (!xt::allclose(m_propagator_origin, -1)) {
+            return false;
+        }
+
+        if (protocol == "stress") {
+            return xt::allclose(xt::mean(m_propagator), 0.0);
+        }
+        else if (protocol == "strain") {
+            return xt::allclose(
+                xt::mean(m_propagator), -1.0 / static_cast<double>(m_propagator.size()));
+        }
+
+        throw std::out_of_range("Unknown protocol");
     }
 
     /**
@@ -375,7 +416,7 @@ public:
     }
 
     /**
-     * @brief Get the average (imposed) stress.
+     * @brief Get the average stress.
      * @return Average stress.
      */
     double sigmabar() const
