@@ -67,7 +67,6 @@ PYBIND11_MODULE(_GooseEPM, mod)
                 double,
                 double,
                 bool,
-                bool,
                 bool>(),
             "System",
             py::arg("propagator"),
@@ -79,7 +78,6 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("failure_rate") = 1,
             py::arg("alpha") = 1.5,
             py::arg("sigmabar") = 0,
-            py::arg("fixed_stress") = false,
             py::arg("init_random_stress") = true,
             py::arg("init_relax") = true);
 
@@ -182,7 +180,6 @@ PYBIND11_MODULE(_GooseEPM, mod)
                 double,
                 double,
                 bool,
-                bool,
                 bool>(),
             "System",
             py::arg("propagator"),
@@ -195,7 +192,6 @@ PYBIND11_MODULE(_GooseEPM, mod)
             py::arg("failure_rate") = 1,
             py::arg("alpha") = 1.5,
             py::arg("sigmabar") = 0,
-            py::arg("fixed_stress") = false,
             py::arg("init_random_stress") = true,
             py::arg("init_relax") = true);
 

@@ -152,7 +152,7 @@ class SystemAthermal {
 
 protected:
     /**
-     * @param propagator The propagator `[M, N]`. Must follow the convention of Rossi et al. (2022).
+     * @param propagator The propagator `[M, N]`.
      * @param distances_rows The distance that each row of the propagator corresponds to `[M]`.
      * @param distances_cols The distance that each column of the propagator corresponds to `[N]`.
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
@@ -161,7 +161,6 @@ protected:
      * @param failure_rate Failure rate.
      * @param alpha Exponent characterising the shape of the potential.
      * @param sigmabar Mean stress to initialise the system.
-     * @param fixed_stress If `true` the stress is kept constant.
      * @param init_random_stress If `true` a random compatible stress is initialised.
      * @param init_relax Relax the system initially.
      */
@@ -175,13 +174,10 @@ protected:
         double failure_rate = 1,
         double alpha = 1.5,
         double sigmabar = 0,
-        bool fixed_stress = false,
         bool init_random_stress = true,
         bool init_relax = true)
     {
         GOOSEEPM_REQUIRE(propagator.dimension() == 2, std::out_of_range);
-        GOOSEEPM_REQUIRE(propagator(0,0) == -1, std::out_of_range);
-        GOOSEEPM_REQUIRE(detail::mean(propagator) == -1/propagator.size(), std::out_of_range);
         GOOSEEPM_REQUIRE(distances_rows.size() == propagator.shape(0), std::out_of_range);
         GOOSEEPM_REQUIRE(distances_cols.size() == propagator.shape(1), std::out_of_range);
         GOOSEEPM_REQUIRE(detail::check_distances(distances_rows), std::out_of_range);
@@ -196,7 +192,6 @@ protected:
 
         m_failure_rate = failure_rate;
         m_alpha = alpha;
-        m_fixed_stress = fixed_stress;
         m_gen = prrng::pcg32(seed);
 
         m_propagator = propagator;
@@ -247,7 +242,6 @@ public:
         double failure_rate = 1,
         double alpha = 1.5,
         double sigmabar = 0,
-        bool fixed_stress = false,
         bool init_random_stress = true,
         bool init_relax = true)
     {
@@ -261,7 +255,6 @@ public:
             failure_rate,
             alpha,
             sigmabar,
-            fixed_stress,
             init_random_stress,
             init_relax);
     }
@@ -392,12 +385,7 @@ public:
      */
     double sigmabar() const
     {
-        if (m_fixed_stress) {
-            return m_sigbar;
-        }
-        else {
-            return detail::mean(m_sig);
-        }
+        return detail::mean(m_sig);
     }
 
     /**
@@ -538,10 +526,6 @@ public:
                 m_sig.periodic(i0 + di, j0 + dj) += m_propagator(i, j) * dsig;
             }
         }
-
-        if (m_fixed_stress) {
-            m_sig -= detail::mean(m_sig) - m_sigbar;
-        }
     }
 
     /**
@@ -626,7 +610,6 @@ protected:
     double m_t; ///< Time.
     double m_failure_rate; ///< Failure rate.
     double m_alpha; ///< Exponent characterising the shape of the potential.
-    bool m_fixed_stress; ///< Flag indicating whether the stress is fixed.
     double m_sigbar; ///< Average stress.
     bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
     double m_propagator_origin; ///< Value of the propagator at the origin.
@@ -654,7 +637,6 @@ public:
         double failure_rate = 1,
         double alpha = 1.5,
         double sigmabar = 0,
-        bool fixed_stress = false,
         bool init_random_stress = true,
         bool init_relax = true)
     {
@@ -668,7 +650,6 @@ public:
             failure_rate,
             alpha,
             sigmabar,
-            fixed_stress,
             init_random_stress,
             init_relax);
 

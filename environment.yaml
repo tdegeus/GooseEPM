@@ -9,6 +9,7 @@ dependencies:
 - prrng >=1.5.1
 - pybind11
 - python
+- scipy
 - scikit-build
 - setuptools_scm
 - xtensor
