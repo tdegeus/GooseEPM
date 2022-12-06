@@ -234,7 +234,7 @@ protected:
 
         m_failure_rate = failure_rate;
         m_alpha = alpha;
-        m_gen = prrng::pcg32(seed);
+        m_gen.seed(seed);
 
         m_propagator = detail::reorganise_popagator(propagator, distances_rows, distances_cols);
         m_drow = detail::amin(distances_rows);
@@ -248,8 +248,7 @@ protected:
         m_sig *= sigmabar;
 
         for (size_t i = 0; i < m_sigy.size(); ++i) {
-            m_sigy.flat(i) =
-                m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(i), m_sigy_std.flat(i))(0);
+            m_sigy.flat(i) = m_gen.normal(m_sigy_mu.flat(i), m_sigy_std.flat(i));
         }
 
         if (init_random_stress) {
@@ -521,11 +520,11 @@ public:
             return -1;
         }
 
-        m_t += m_gen.exponential(std::array<size_t, 1>{1})(0) / (m_failure_rate * nfailing);
+        m_t += m_gen.exponential() / (m_failure_rate * nfailing);
 
         size_t i = 0;
         if (nfailing > 1) {
-            i = m_gen.randint(std::array<size_t, 1>{1}, nfailing)(0);
+            i = m_gen.randint(nfailing);
         }
 
         size_t idx = m_sig.shape(0) * failing[i][0] + failing[i][1];
@@ -566,11 +565,10 @@ public:
      */
     void spatialParticleFailure(size_t idx)
     {
-        double dsig = m_sig.flat(idx) + m_gen.normal(std::array<size_t, 1>{1}, 0.0, 0.01)(0);
+        double dsig = m_sig.flat(idx) + m_gen.normal(0.0, 0.01);
 
         m_epsp.flat(idx) -= dsig * m_propagator_origin;
-        m_sigy.flat(idx) =
-            m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))(0);
+        m_sigy.flat(idx) = m_gen.normal(m_sigy_mu.flat(idx), m_sigy_std.flat(idx));
 
         auto index = xt::unravel_index(idx, m_sig.shape());
         ptrdiff_t di = static_cast<ptrdiff_t>(index[0]) + m_drow;
