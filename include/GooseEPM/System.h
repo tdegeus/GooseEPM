@@ -719,7 +719,7 @@ public:
 
         auto dt = m_gen.exponential<decltype(m_sig)>(m_sig.shape());
         auto scale = xt::where(
-            xt::abs(m_sig) >= m_sig,
+            xt::abs(m_sig) >= m_sigy,
             inv_failure_rate,
             xt::exp(xt::pow(m_sigy - xt::abs(m_sig), m_alpha) * inv_temp) * inv_failure_rate);
 
