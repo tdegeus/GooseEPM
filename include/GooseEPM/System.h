@@ -133,6 +133,30 @@ inline T create_distance_lookup(const T& distance)
     return ret;
 }
 
+/**
+ * @brief Reogranize a propagator such that the distances are ordered.
+ *
+ * @param propagator Propagator to be reorganized.
+ * @param drow Distance of each row.
+ * @param dcol Distance of each column.
+ * @return Reorganized propagator.
+ */
+template <class T, class D>
+inline T reorganise_popagator(const T& propagator, const D& drow, const D& dcol)
+{
+    T ret = xt::empty_like(propagator);
+    auto dr = xt::argsort(drow);
+    auto dc = xt::argsort(dcol);
+
+    for (size_t i = 0; i < propagator.shape(0); ++i) {
+        for (size_t j = 0; j < propagator.shape(1); ++j) {
+            ret(i, j) = propagator(dr(i), dc(j));
+        }
+    }
+
+    return ret;
+}
+
 } // namespace detail
 
 /**
@@ -212,9 +236,9 @@ protected:
         m_alpha = alpha;
         m_gen = prrng::pcg32(seed);
 
-        m_propagator = propagator;
-        m_drow = distances_rows;
-        m_dcol = distances_cols;
+        m_propagator = detail::reorganise_popagator(propagator, distances_rows, distances_cols);
+        m_drow = detail::amin(distances_rows);
+        m_dcol = detail::amin(distances_cols);
 
         m_sigy_mu = sigmay_mean;
         m_sigy_std = sigmay_std;
@@ -468,11 +492,10 @@ public:
 
         for (ptrdiff_t i = 0; i < m_sig.shape(0); ++i) {
             for (ptrdiff_t j = 0; j < m_sig.shape(1); ++j) {
-                for (size_t k = 0; k < m_propagator.shape(0); ++k) {
-                    for (size_t l = 0; l < m_propagator.shape(1); ++l) {
-                        ptrdiff_t di = m_drow(k);
-                        ptrdiff_t dj = m_dcol(l);
-                        m_sig.periodic(i + di, j + dj) -= dsig(i, j) * m_propagator(k, l);
+                for (ptrdiff_t k = 0; k < m_propagator.shape(0); ++k) {
+                    for (ptrdiff_t l = 0; l < m_propagator.shape(1); ++l) {
+                        m_sig.periodic(i + m_drow + k, j + m_dcol + l) -=
+                            dsig(i, j) * m_propagator(k, l);
                     }
                 }
             }
@@ -550,14 +573,12 @@ public:
             m_gen.normal(std::array<size_t, 1>{1}, m_sigy_mu.flat(idx), m_sigy_std.flat(idx))(0);
 
         auto index = xt::unravel_index(idx, m_sig.shape());
-        ptrdiff_t i0 = static_cast<ptrdiff_t>(index[0]);
-        ptrdiff_t j0 = static_cast<ptrdiff_t>(index[1]);
+        ptrdiff_t di = static_cast<ptrdiff_t>(index[0]) + m_drow;
+        ptrdiff_t dj = static_cast<ptrdiff_t>(index[1]) + m_dcol;
 
-        for (size_t i = 0; i < m_propagator.shape(0); ++i) {
-            for (size_t j = 0; j < m_propagator.shape(1); ++j) {
-                ptrdiff_t di = m_drow(i);
-                ptrdiff_t dj = m_dcol(j);
-                m_sig.periodic(i0 + di, j0 + dj) += m_propagator(i, j) * dsig;
+        for (ptrdiff_t i = 0; i < m_propagator.shape(0); ++i) {
+            for (ptrdiff_t j = 0; j < m_propagator.shape(1); ++j) {
+                m_sig.periodic(di + i, dj + j) += m_propagator(i, j) * dsig;
             }
         }
     }
@@ -634,8 +655,8 @@ public:
 protected:
     prrng::pcg32 m_gen; ///< Random number generator.
     array_type::tensor<double, 2> m_propagator; ///< Propagator.
-    array_type::tensor<ptrdiff_t, 1> m_drow; ///< Lookup list: distance -> row in #m_propagator.
-    array_type::tensor<ptrdiff_t, 1> m_dcol; ///< Lookup list: distance -> column in #m_propagator.
+    ptrdiff_t m_drow; ///< Lookup list: distance -> row in #m_propagator.
+    ptrdiff_t m_dcol; ///< Lookup list: distance -> column in #m_propagator.
     array_type::tensor<double, 2> m_sig; ///< Stress.
     array_type::tensor<double, 2> m_sigy; ///< Yield stress.
     array_type::tensor<double, 2> m_sigy_mu; ///< Mean yield stress.

@@ -1,3 +1,6 @@
+import pathlib
+
+import h5py
 import numpy as np
 from GooseEPM import elshelby_propagator
 from GooseEPM import SystemAthermal
@@ -30,6 +33,11 @@ for i in range(1, nstep):
     system.relaxAthermal()
     sigma[i] = system.sigmabar
     epsp[i] = np.mean(system.epsp)
+
+base = pathlib.Path(__file__)
+with h5py.File(base.parent / (base.stem + ".h5")) as file:
+    assert np.allclose(file["epsp"][...], epsp)
+    assert np.allclose(file["sigma"][...], sigma)
 
 if plot:
 

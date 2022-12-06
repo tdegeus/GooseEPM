@@ -3,6 +3,7 @@ channels:
 dependencies:
 - cmake
 - doxygen >=1.9.5
+- h5py
 - mathjax
 - ninja
 - numpy
