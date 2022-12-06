@@ -44,6 +44,7 @@ class Test_SystemAthermal(unittest.TestCase):
             init_relax=True,
         )
         self.assertAlmostEqual(system.sigmabar, sigmabar)
+        self.assertTrue(system.propogator_follows_conventions("stress"))
 
         sigmabar = 0.6
         system.sigmabar = sigmabar
@@ -66,11 +67,16 @@ class Test_SystemAthermal(unittest.TestCase):
             init_random_stress=True,
             init_relax=True,
         )
+        self.assertTrue(system.propogator_follows_conventions("strain"))
+
         system.shiftImposedShear(direction=1)
+
         sigma = np.copy(system.sigma)
         i = np.argwhere(system.sigma > system.sigmay).ravel()
         idx = np.ravel_multi_index(i, system.sigma.shape)
+
         system.spatialParticleFailure(idx)
+
         dsig = sigma.flat[idx] - system.sigma.flat[idx]
         self.assertAlmostEqual(system.sigmabar, np.mean(sigma) - dsig / sigma.size)
 
