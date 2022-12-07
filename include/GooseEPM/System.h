@@ -164,14 +164,17 @@ inline T reorganise_popagator(const T& propagator, const D& drow, const D& dcol)
  *
  * **Imposed stress**:
  *
- *  -   The propagator G_{ij} must follow \f$ \sum\limits_{ij} G_{ij} = 0 \f$ and
+ *  -   The propagator \f$ G_{ij} \f$ must follow \f$ \sum\limits_{ij} G_{ij} = 0 \f$ and
  *      \f$ G(\Delta i = 0, \Delta j = 0) = -1 \f$.
  *      See SystemAthermal::propogator_follows_conventions.
  *
+ * @note The average stress is not fixed internally. Consequently, numerical errors may accumulate.
+ * Use SystemAthermal::set_sigmabar to correct if needed.
+ *
  * **Imposed strain**:
  *
- *  -   The propagator G_{ij} must follow \f$ \sum\limits_{ij} G_{ij} = - 1 / N \f$, with \f$ N \f$
- *      the size of the propagator, and \f$ G(\Delta i = 0, \Delta j = 0) = -1 \f$.
+ *  -   The propagator \f$ G_{ij} \f$ must follow \f$ \sum\limits_{ij} G_{ij} = - 1 / N \f$,
+ *      with \f$ N \f$ the size of the propagator, and \f$ G(\Delta i = 0, \Delta j = 0) = -1 \f$.
  *      See SystemAthermal::propogator_follows_conventions.
  *
  *  -   Driving proceeds by imposing the strain, that changes the stress through elasticity.
@@ -200,11 +203,13 @@ protected:
      * @param sigmay_mean Mean yield stress for every block `[M, N]`.
      * @param sigmay_std Standard deviation of the yield stress for every block `[M, N]`.
      * @param seed Seed of the random number generator.
-     * @param failure_rate Failure rate.
+     * @param failure_rate Failure rate \f$ f_0 \f$.
      * @param alpha Exponent characterising the shape of the potential.
      * @param sigmabar Mean stress to initialise the system.
      * @param init_random_stress If `true` a random compatible stress is initialised.
      * @param init_relax Relax the system initially.
+     *
+     * @todo The failure rate might be rather a time. This should be clarified and documented.
      */
     void initSystemAthermal(
         const array_type::tensor<double, 2>& propagator,
@@ -403,11 +408,6 @@ public:
 
     /**
      * @brief Set the stress.
-     *
-     * @note
-     *      If a fixed stress protocol is used, the fixed stress is set to `mean(sigma)`.
-     *      See SystemAthermal::set_sigmabar() to change the average (applied) stress.
-     *
      * @param sigma Stress.
      */
     void set_sigma(const array_type::tensor<double, 2>& sigma)
@@ -428,7 +428,7 @@ public:
      * @brief Adjust the average stress.
      *
      * @note
-     *      If the fixed stress protocol is used,
+     *      If the propagator is defined according to the fixed stress protocol,
      *      the average stress is fixed to the here specified value.
      *
      * @param sigmabar Imposed stress.
@@ -448,7 +448,7 @@ public:
     }
 
     /**
-     * @brief Generate a stress field that is compatible, using a fast (approximative) technique.
+     * @brief Generate a stress field that is compatible, using a fast but approximative technique.
      *
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      * @param delta_r Distance to use, see above.
@@ -477,10 +477,13 @@ public:
 
     /**
      * @brief Generate a stress field that is compatible. Internally the propagator is used.
-     * Note that this computes the convolution between a random field and the propagator.
-     * Since the propagator is defined in real space, this can ba quite costly.
-     * Instead, it is advised you compute the convolution in Fourier space, using the expression
-     * of the propagator in Fourier space.
+     *
+     * @note
+     *      This protocol computes the convolution between a random field and the propagator.
+     *      Since the propagator is defined in real space, this can ba quite costly.
+     *      Instead, it is advised that you compute the convolution in Fourier space,
+     *      using the expression of the propagator in Fourier space.
+     *      Any additions to the Python module to this extent are welcome!
      *
      * @param sigma_std Width of the normal distribution of stresses (mean == 0).
      */
@@ -505,10 +508,11 @@ public:
 
     /**
      * @brief Fail an unstable block, chosen randomly from all unstable blocks.
-     * The time is advanced by \f$ \exp( 1 / f_0 n )\f$ with \f$ f_0 \f$ the failure rate
+     * The time is advanced by \f$ \exp( 1 / (f_0 n) )\f$ with \f$ f_0 \f$ the failure rate
      * (see constructor) and \f$ n \f$ the number of unstable blocks.
      *
      * @note If no block is unstable, nothing happens, and `-1` is returned.
+     *
      * @return Index of the failing particle (flat index).
      */
     ptrdiff_t makeAthermalFailureStep()
@@ -535,7 +539,8 @@ public:
 
     /**
      * @brief Fail weakest block unstable and advance the time by one.
-     * If all blocks are stable
+     *
+     * @note If no block is unstable, nothing happens, and `-1` is returned.
      *
      * @return Index of the failing particle (flat index).
      */
@@ -583,7 +588,11 @@ public:
 
     /**
      * @brief Change the imposed shear such that one block fails in the direction of shear.
-     * @warning If you call this from a system that is not relaxed, the system will unload.
+     *
+     * @warning
+     *      If you call this from a system that is not relaxed, the system will move in the
+     *      opposite direction than imposed.
+     *
      * @param direction Select positive (+1) or negative (-1) direction.
      */
     void shiftImposedShear(int direction = 1)
@@ -601,7 +610,7 @@ public:
     }
 
     /**
-     * @brief Relax the system by calling SystemAthermal::makeAthermalFailureStep()
+     * @brief Relax the system by calling SystemAthermal::makeAthermalFailureStep
      * until there are no more unstable blocks.
      *
      * @param max_steps Maximum number of iterations to allow.
@@ -626,7 +635,7 @@ public:
     }
 
     /**
-     * @brief Relax the system by calling SystemAthermal::makeWeakestFailureStep()
+     * @brief Relax the system by calling SystemAthermal::makeWeakestFailureStep
      * until there are no more unstable blocks.
      *
      * @param max_steps Maximum number of iterations to allow.
@@ -653,8 +662,8 @@ public:
 protected:
     prrng::pcg32 m_gen; ///< Random number generator.
     array_type::tensor<double, 2> m_propagator; ///< Propagator.
-    ptrdiff_t m_drow; ///< Lookup list: distance -> row in #m_propagator.
-    ptrdiff_t m_dcol; ///< Lookup list: distance -> column in #m_propagator.
+    ptrdiff_t m_drow; ///< Minimal distance in row direction, used as offset.
+    ptrdiff_t m_dcol; ///< Minimal distance in column direction, used as offset.
     array_type::tensor<double, 2> m_sig; ///< Stress.
     array_type::tensor<double, 2> m_sigy; ///< Yield stress.
     array_type::tensor<double, 2> m_sigy_mu; ///< Mean yield stress.
@@ -663,7 +672,6 @@ protected:
     double m_t; ///< Time.
     double m_failure_rate; ///< Failure rate.
     double m_alpha; ///< Exponent characterising the shape of the potential.
-    bool m_initstress; ///< Flag indicating whether the stress has to be initialised.
     double m_propagator_origin; ///< Value of the propagator at the origin.
 };
 
@@ -726,9 +734,10 @@ public:
 
     /**
      * @brief Make a thermal failure step.
+     * Time is advanced by the smallest time to the next failure. Thereby:
      *
-     *      -   Unstable blocks are failed at a rate `failure_rate`.
-     *      -   Stable blocks are failed a rate proportional to their energy barrier.
+     *  -   Unstable blocks are failed at a rate `failure_rate`.
+     *  -   Stable blocks are failed a rate proportional to their energy barrier.
      */
     void makeThermalFailureStep()
     {
