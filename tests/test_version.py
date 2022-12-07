@@ -1,7 +1,6 @@
 import faulthandler
 import unittest
 
-import numpy as np
 from GooseEPM import version_dependencies
 
 faulthandler.enable()
