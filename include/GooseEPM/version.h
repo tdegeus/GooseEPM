@@ -10,6 +10,7 @@
 #define GOOSEEPM_VERSION_H
 
 #include "config.h"
+#include <prrng.h>
 
 /**
  * Current version.
@@ -69,15 +70,9 @@ inline std::string version()
  */
 inline std::vector<std::string> version_dependencies()
 {
-    std::vector<std::string> ret;
-
+    auto ret = prrng::version_dependencies();
     ret.push_back("gooseepm=" + version());
-
-    ret.push_back(
-        "xtensor=" + detail::unquote(std::string(QUOTE(XTENSOR_VERSION_MAJOR))) + "." +
-        detail::unquote(std::string(QUOTE(XTENSOR_VERSION_MINOR))) + "." +
-        detail::unquote(std::string(QUOTE(XTENSOR_VERSION_PATCH))));
-
+    std::sort(ret.begin(), ret.end(), std::greater<std::string>());
     return ret;
 }
 

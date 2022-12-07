@@ -52,6 +52,11 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
     mod.def("version", &M::version, "Return version string.");
 
+    mod.def(
+        "version_dependencies",
+        &M::version_dependencies,
+        "Return version strings of crucial dependencies.");
+
     {
         py::class_<M::SystemAthermal> cls(mod, "SystemAthermal");
 
