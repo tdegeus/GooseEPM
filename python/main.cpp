@@ -94,10 +94,6 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
-        cls.def_property_readonly("propagator", &M::SystemAthermal::propagator, "Propagator");
-
-        cls.def_property_readonly("sigmay_mean", &M::SysthemAthermal::sigmay_mean, "Mean yield stress field");
-
         cls.def(
             "propogator_follows_conventions",
             &M::SystemAthermal::propogator_follows_conventions,
@@ -113,10 +109,22 @@ PYBIND11_MODULE(_GooseEPM, mod)
             "State of the random number generator");
 
         cls.def_property(
+            "propagator",
+            &M::SystemAthermal::propagator,
+            &M::SystemAthermal::set_propagator,
+            "Propagator");
+
+        cls.def_property(
             "epsp", &M::SystemAthermal::epsp, &M::SystemAthermal::set_epsp, "Plastic strain");
 
         cls.def_property(
             "sigmay", &M::SystemAthermal::sigmay, &M::SystemAthermal::set_sigmay, "Yield stress");
+
+        cls.def_property(
+            "sigmay_mean",
+            &M::SystemAthermal::sigmay_mean,
+            &M::SystemAthermal::set_sigmay_mean,
+            "Mean yield stress field");
 
         cls.def_property(
             "sigma", &M::SystemAthermal::sigma, &M::SystemAthermal::set_sigma, "Stress");

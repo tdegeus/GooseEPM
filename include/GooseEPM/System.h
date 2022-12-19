@@ -335,6 +335,24 @@ public:
     }
 
     /**
+     * @brief Set the propagator.
+     * @param sigmay Propagator.
+     */
+    void set_propagator(const array_type::tensor<double, 2>& propagator)
+    {
+        m_propagator = propagator;
+    }
+
+    /**
+     * @brief Get the propagator.
+     * @return Propagator.
+     */
+    const array_type::tensor<double, 2>& propagator() const
+    {
+        return m_propagator;
+    }
+
+    /**
      * @brief Set the time
      * @param t Time.
      */
@@ -404,6 +422,24 @@ public:
     const array_type::tensor<double, 2>& sigmay() const
     {
         return m_sigy;
+    }
+
+    /**
+     * @brief Set the mean yield stress field.
+     * @param sigmay Mean yield stress field.
+     */
+    void set_sigmay_mean(const array_type::tensor<double, 2>& sigmay_mean)
+    {
+        m_sigy_mu = sigmay_mean;
+    }
+
+    /**
+     * @brief Get the mean yield stress field.
+     * @return Mean yield stress field.
+     */
+    const array_type::tensor<double, 2>& sigmay_mean() const
+    {
+        return m_sigy_mu;
     }
 
     /**
