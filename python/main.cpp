@@ -94,6 +94,10 @@ PYBIND11_MODULE(_GooseEPM, mod)
 
         cls.def_property_readonly("shape", &M::SystemAthermal::shape, "Shape");
 
+        cls.def_property_readonly("propagator", &M::SystemAthermal::propagator, "Propagator");
+
+        cls.def_property_readonly("sigmay_mean", &M::SysthemAthermal::sigmay_mean, "Mean yield stress field");
+
         cls.def(
             "propogator_follows_conventions",
             &M::SystemAthermal::propogator_follows_conventions,
