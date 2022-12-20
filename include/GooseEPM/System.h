@@ -425,8 +425,8 @@ public:
     }
 
     /**
-     * @brief Set the mean yield stress field.
-     * @param sigmay Mean yield stress field.
+     * @brief Set the mean yield stress of each block.
+     * @param sigmay Mean yield stress.
      */
     void set_sigmay_mean(const array_type::tensor<double, 2>& sigmay_mean)
     {
