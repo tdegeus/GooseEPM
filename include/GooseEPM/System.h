@@ -434,8 +434,8 @@ public:
     }
 
     /**
-     * @brief Get the mean yield stress field.
-     * @return Mean yield stress field.
+     * @brief Get the mean yield stress of each block.
+     * @return Mean yield stress.
      */
     const array_type::tensor<double, 2>& sigmay_mean() const
     {
