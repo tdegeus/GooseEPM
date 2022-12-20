@@ -446,10 +446,11 @@ public:
 
     /**
      * @brief Set the yield stress standard deviation of each block.
-     * @param sigmay_std Yield stress standard deviation.
+     * @param value Yield stress standard deviation.
      */
-    void set_sigmay_std(const array_type::tensor<double, 2>& sigmay_std)
+    void set_sigmay_std(const array_type::tensor<double, 2>& value)
     {
+        GOOSEEPM_ASSERT(xt::has_shape(value, m_sigy_std.shape()), std::out_of_range);
         m_sigy_std = sigmay_std;
     }
 
