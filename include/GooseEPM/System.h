@@ -427,11 +427,12 @@ public:
 
     /**
      * @brief Set the mean yield stress of each block.
-     * @param sigmay Mean yield stress.
+     * @param value Mean yield stress.
      */
-    void set_sigmay_mean(const array_type::tensor<double, 2>& sigmay_mean)
+    void set_sigmay_mean(const array_type::tensor<double, 2>& value)
     {
-        m_sigy_mu = sigmay_mean;
+        GOOSEEPM_ASSERT(xt::has_shape(value, m_sigy_mu.shape()), std::out_of_range);
+        m_sigy_mu = value;
     }
 
     /**
