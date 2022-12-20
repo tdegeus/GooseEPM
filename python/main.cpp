@@ -124,7 +124,13 @@ PYBIND11_MODULE(_GooseEPM, mod)
             "sigmay_mean",
             &M::SystemAthermal::sigmay_mean,
             &M::SystemAthermal::set_sigmay_mean,
-            "Mean yield stress field");
+            "Mean yield stress of each block");
+
+        cls.def_property(
+            "sigmay_std",
+            &M::SystemAthermal::sigmay_std,
+            &M::SystemAthermal::set_sigmay_std,
+            "Yield stress standard deviation of each block");
 
         cls.def_property(
             "sigma", &M::SystemAthermal::sigma, &M::SystemAthermal::set_sigma, "Stress");

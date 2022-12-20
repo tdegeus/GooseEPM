@@ -443,6 +443,24 @@ public:
     }
 
     /**
+     * @brief Set the yield stress standard deviation of each block.
+     * @param sigmay_std Yield stress standard deviation.
+     */
+    void set_sigmay_std(const array_type::tensor<double, 2>& sigmay_std)
+    {
+        m_sigy_std = sigmay_std;
+    }
+
+    /**
+     * @brief Get the yield stress standard deviation of each block.
+     * @return Yield stress standard deviation.
+     */
+    const array_type::tensor<double, 2>& sigmay_std() const
+    {
+        return m_sigy_std;
+    }
+
+    /**
      * @brief Set the stress.
      * @param sigma Stress.
      */
