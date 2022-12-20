@@ -336,7 +336,7 @@ public:
 
     /**
      * @brief Set the propagator.
-     * @param sigmay Propagator.
+     * @param propagator Propagator.
      */
     void set_propagator(const array_type::tensor<double, 2>& propagator)
     {
