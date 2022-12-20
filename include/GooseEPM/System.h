@@ -336,11 +336,12 @@ public:
 
     /**
      * @brief Set the propagator.
-     * @param propagator Propagator.
+     * @param value Propagator.
      */
-    void set_propagator(const array_type::tensor<double, 2>& propagator)
+    void set_propagator(const array_type::tensor<double, 2>& value)
     {
-        m_propagator = propagator;
+        GOOSEEPM_ASSERT(xt::has_shape(value, m_propagator.shape()), std::out_of_range);
+        m_propagator = value;
     }
 
     /**
