@@ -335,6 +335,15 @@ public:
     }
 
     /**
+     * @brief Get the propagator.
+     * @return Propagator.
+     */
+    const array_type::tensor<double, 2>& propagator() const
+    {
+        return m_propagator;
+    }
+
+    /**
      * @brief Set the time
      * @param t Time.
      */
@@ -404,6 +413,44 @@ public:
     const array_type::tensor<double, 2>& sigmay() const
     {
         return m_sigy;
+    }
+
+    /**
+     * @brief Set the mean yield stress of each block.
+     * @param value Mean yield stress.
+     */
+    void set_sigmay_mean(const array_type::tensor<double, 2>& value)
+    {
+        GOOSEEPM_ASSERT(xt::has_shape(value, m_sigy_mu.shape()), std::out_of_range);
+        m_sigy_mu = value;
+    }
+
+    /**
+     * @brief Get the mean yield stress of each block.
+     * @return Mean yield stress.
+     */
+    const array_type::tensor<double, 2>& sigmay_mean() const
+    {
+        return m_sigy_mu;
+    }
+
+    /**
+     * @brief Set the yield stress standard deviation of each block.
+     * @param value Yield stress standard deviation.
+     */
+    void set_sigmay_std(const array_type::tensor<double, 2>& value)
+    {
+        GOOSEEPM_ASSERT(xt::has_shape(value, m_sigy_std.shape()), std::out_of_range);
+        m_sigy_std = value;
+    }
+
+    /**
+     * @brief Get the yield stress standard deviation of each block.
+     * @return Yield stress standard deviation.
+     */
+    const array_type::tensor<double, 2>& sigmay_std() const
+    {
+        return m_sigy_std;
     }
 
     /**
