@@ -108,11 +108,7 @@ PYBIND11_MODULE(_GooseEPM, mod)
             &M::SystemAthermal::set_state,
             "State of the random number generator");
 
-        cls.def_property(
-            "propagator",
-            &M::SystemAthermal::propagator,
-            &M::SystemAthermal::set_propagator,
-            "Propagator");
+        cls.def_property_readonly("propagator", &M::SystemAthermal::propagator, "Propagator");
 
         cls.def_property(
             "epsp", &M::SystemAthermal::epsp, &M::SystemAthermal::set_epsp, "Plastic strain");

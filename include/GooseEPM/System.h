@@ -335,16 +335,6 @@ public:
     }
 
     /**
-     * @brief Set the propagator.
-     * @param value Propagator.
-     */
-    void set_propagator(const array_type::tensor<double, 2>& value)
-    {
-        GOOSEEPM_ASSERT(xt::has_shape(value, m_propagator.shape()), std::out_of_range);
-        m_propagator = value;
-    }
-
-    /**
      * @brief Get the propagator.
      * @return Propagator.
      */
