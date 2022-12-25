@@ -451,7 +451,7 @@ public:
     void set_sigmay_std(const array_type::tensor<double, 2>& value)
     {
         GOOSEEPM_ASSERT(xt::has_shape(value, m_sigy_std.shape()), std::out_of_range);
-        m_sigy_std = sigmay_std;
+        m_sigy_std = value;
     }
 
     /**
